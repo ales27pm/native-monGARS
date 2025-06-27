@@ -73,22 +73,27 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          
+          
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🧪 Run Full Test Suite
-        run: npm run test:ci
+        run: bun run test:ci
         
       - name: 🔍 Lint Check
-        run: npm run lint:check
+        run: bun run lint:check
         
       - name: 📝 Type Check
-        run: npm run typecheck
+        run: bun run typecheck
         
       - name: 🎨 Format Check
-        run: npm run format:check
+        run: bun run format:check
         
       - name: ✅ Validation Summary
         run: |
@@ -111,21 +116,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          
           
       - name: 🍎 Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
           
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🛠️ Setup Expo CLI
         run: npm install -g @expo/cli eas-cli
         
       - name: 📱 Expo Prebuild iOS
-        run: npx expo prebuild --platform ios --clean
+        run: bunx expo prebuild --platform ios --clean
         
       - name: 🔐 Setup iOS Certificates
         if: ${{ secrets.IOS_DIST_CERTIFICATE }}
@@ -178,7 +188,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          
           
       - name: ☕ Setup Java
         uses: actions/setup-java@v4
@@ -189,14 +199,19 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
         
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🛠️ Setup Expo CLI
         run: npm install -g @expo/cli eas-cli
         
       - name: 🤖 Expo Prebuild Android
-        run: npx expo prebuild --platform android --clean
+        run: bunx expo prebuild --platform android --clean
         
       - name: 🔐 Setup Android Signing
         if: ${{ secrets.ANDROID_KEYSTORE }}
@@ -248,10 +263,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          
+          
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🛠️ Setup Expo CLI
         run: npm install -g @expo/cli
@@ -259,7 +279,7 @@ jobs:
       - name: 🌐 Export Web Build
         run: |
           echo "🌐 Exporting web build..."
-          npx expo export --platform web
+          bunx expo export --platform web
           
       - name: 📤 Deploy to Netlify/Vercel
         run: |

@@ -20,20 +20,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.19.0'
-          cache: 'npm'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🎨 Check Prettier Formatting
-        run: npm run format:check
+        run: bun run format:check
         
       - name: 📊 Format Check Report
         if: failure()
         run: |
           echo "❌ Code formatting issues found!"
-          echo "Run 'npm run format' to fix formatting issues"
-          npm run format:check || true
+          echo "Run 'bun run format' to fix formatting issues"
+          bun run format:check || true
 
   # 🔒 Security Scanning
   security:
@@ -68,7 +71,7 @@ jobs:
         continue-on-error: true
         
       - name: 📋 Upload Security Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-report
           path: reports/
@@ -87,20 +90,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.19.0'
-          cache: 'npm'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🔍 ESLint Analysis
         run: |
           echo "🔍 Running ESLint analysis..."
-          npm run lint:check || echo "⚠️ Linting issues found"
+          bun run lint:check || echo "⚠️ Linting issues found"
           
       - name: 🔍 TypeScript Analysis
         run: |
           echo "🔍 Running TypeScript analysis..."
-          npm run typecheck
+          bun run typecheck
           
       - name: 📊 Complexity Analysis
         run: |
@@ -188,10 +194,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.19.0'
-          cache: 'npm'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 📱 React Native Best Practices Check
         run: |
@@ -244,10 +253,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18.19.0'
-          cache: 'npm'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
           
       - name: 📥 Install Dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: 🤖 AI System Validation
         run: |
