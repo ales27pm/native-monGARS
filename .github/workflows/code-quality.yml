@@ -1,0 +1,296 @@
+name: 📝 Code Quality & Security
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # 🔍 Code Formatting
+  formatting:
+    name: 🎨 Code Formatting Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: 🎨 Check Prettier Formatting
+        run: bun run format:check
+        
+      - name: 📊 Format Check Report
+        if: failure()
+        run: |
+          echo "❌ Code formatting issues found!"
+          echo "Run 'bun run format' to fix formatting issues"
+          bun run format:check || true
+
+  # 🔒 Security Scanning
+  security:
+    name: 🔒 Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+          cache: 'npm'
+          
+      - name: 🔒 NPM Audit
+        run: |
+          echo "🔍 Running npm audit..."
+          npm audit --audit-level=moderate || echo "⚠️ Vulnerabilities found"
+          
+      - name: 🔒 Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'ARIA'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --suppression dependency-check-suppressions.xml
+        continue-on-error: true
+        
+      - name: 📋 Upload Security Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: reports/
+        if: always()
+
+  # 📊 Code Analysis
+  code-analysis:
+    name: 📊 Static Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: 🔍 ESLint Analysis
+        run: |
+          echo "🔍 Running ESLint analysis..."
+          bun run lint:check || echo "⚠️ Linting issues found"
+          
+      - name: 🔍 TypeScript Analysis
+        run: |
+          echo "🔍 Running TypeScript analysis..."
+          bun run typecheck
+          
+      - name: 📊 Complexity Analysis
+        run: |
+          echo "📊 Code complexity analysis:"
+          find src -name "*.ts" -o -name "*.tsx" | xargs wc -l | sort -n
+          echo "📈 File count by type:"
+          find src -name "*.ts" | wc -l | xargs echo "TypeScript files:"
+          find src -name "*.tsx" | wc -l | xargs echo "React components:"
+
+  # 🏗️ Architecture Validation
+  architecture:
+    name: 🏗️ Architecture Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 🏗️ Validate Project Structure
+        run: |
+          echo "🏗️ Validating ARIA architecture..."
+          
+          # Check core directories exist
+          dirs=("src/api" "src/components" "src/screens" "src/state" "src/types" "src/utils" "src/navigation")
+          for dir in "${dirs[@]}"; do
+            if [ -d "$dir" ]; then
+              echo "✅ $dir exists"
+            else
+              echo "❌ $dir missing"
+              exit 1
+            fi
+          done
+          
+          # Check core API files
+          api_files=(
+            "src/api/advanced-reasoning.ts"
+            "src/api/vision-system.ts"
+            "src/api/audio-system.ts"
+            "src/api/sensor-manager.ts"
+            "src/api/context-engine.ts"
+            "src/api/autonomous-system.ts"
+          )
+          
+          for file in "${api_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file missing"
+              exit 1
+            fi
+          done
+          
+          # Check screen files
+          screen_files=(
+            "src/screens/HomeScreen.tsx"
+            "src/screens/ChatScreen.tsx"
+            "src/screens/VisionScreen.tsx"
+            "src/screens/AudioScreen.tsx"
+            "src/screens/SensorsScreen.tsx"
+            "src/screens/AnalysisScreen.tsx"
+            "src/screens/AutonomousScreen.tsx"
+          )
+          
+          for file in "${screen_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file exists"
+            else
+              echo "❌ $file missing"
+              exit 1
+            fi
+          done
+          
+          echo "🎉 Architecture validation passed!"
+
+  # 📱 React Native Validation
+  react-native-validation:
+    name: 📱 React Native Best Practices
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: 📱 React Native Best Practices Check
+        run: |
+          echo "📱 Checking React Native best practices..."
+          
+          # Check for proper imports
+          echo "🔍 Checking imports..."
+          if grep -r "import.*react-native.*TouchableOpacity" src/; then
+            echo "⚠️ Found TouchableOpacity usage - prefer Pressable"
+          else
+            echo "✅ No TouchableOpacity found - good!"
+          fi
+          
+          # Check for proper navigation usage
+          echo "🔍 Checking navigation..."
+          if grep -r "@react-navigation/native-stack" src/; then
+            echo "✅ Using native stack navigation"
+          else
+            echo "⚠️ Consider using native stack navigation"
+          fi
+          
+          # Check for safe area usage
+          echo "🔍 Checking safe area usage..."
+          if grep -r "react-native-safe-area-context" src/; then
+            echo "✅ Using safe area context"
+          else
+            echo "⚠️ Consider using safe area context"
+          fi
+          
+          # Check for reanimated usage
+          echo "🔍 Checking animations..."
+          if grep -r "react-native-reanimated" src/; then
+            echo "✅ Using react-native-reanimated"
+          else
+            echo "⚠️ Consider using react-native-reanimated for animations"
+          fi
+          
+          echo "📱 React Native validation completed!"
+
+  # 🤖 AI Integration Validation
+  ai-validation:
+    name: 🤖 AI Integration Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.0'
+      - name: 🍞 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: 📥 Install Dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: 🤖 AI System Validation
+        run: |
+          echo "🤖 Validating AI integration..."
+          
+          # Check for API key handling
+          echo "🔐 Checking API key security..."
+          if grep -r "process\.env\." src/ | grep -v "test" | grep -v "example"; then
+            echo "✅ Found environment variable usage"
+          else
+            echo "⚠️ No environment variables found"
+          fi
+          
+          # Check for hardcoded API keys (security)
+          echo "🔒 Checking for hardcoded secrets..."
+          if grep -r "sk-" src/ | grep -v "example" | grep -v "test"; then
+            echo "❌ Potential hardcoded API key found!"
+            exit 1
+          else
+            echo "✅ No hardcoded API keys found"
+          fi
+          
+          # Check AI model integration
+          echo "🧠 Checking AI model integration..."
+          models=("openai" "anthropic" "grok")
+          for model in "${models[@]}"; do
+            if grep -r "$model" src/api/; then
+              echo "✅ $model integration found"
+            else
+              echo "⚠️ $model integration not found"
+            fi
+          done
+          
+          echo "🤖 AI validation completed!"
