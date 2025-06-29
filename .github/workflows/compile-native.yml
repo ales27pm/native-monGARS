@@ -7,14 +7,16 @@ on:
   push:
     branches: [ "main" ]
     paths:
+      # Trigger on changes to native code, project config, or patches
       - 'native-monGARS/ios/**'
       - 'native-monGARS/modules/**'
       - 'native-monGARS/package.json'
       - 'native-monGARS/app.json'
+      - 'native-monGARS/patches/**'
 
 jobs:
   compile-ios:
-    runs-on: macos-14 # Keeping this on macOS is safer for Xcode tools
+    runs-on: macos-14
     
     defaults:
       run:
@@ -33,30 +35,36 @@ jobs:
 
       - name: Clean Install Dependencies
         run: |
+          echo "Clearing npm cache and removing previous state..."
           npm cache clean --force
           rm -rf node_modules package-lock.json
+          
+          echo "Applying patches before installation..."
+          # This command requires the 'patches' directory to be inside the working directory
           npx patch-package
+          
+          echo "Installing dependencies with --legacy-peer-deps..."
           npm install --legacy-peer-deps
 
       - name: Verify Critical Dependencies
         run: |
+          echo "Verifying that 'react-native' is installed..."
           if [ ! -f "node_modules/react-native/package.json" ]; then
             echo "::error::'react-native' package was not found after install. Dependency resolution failed."
             exit 1
           fi
+          echo "✅ Critical dependencies are present."
 
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
-      # *** ROBUST FIX FOR MODIFYING PODFILE ***
-      - name: Modify Podfile to add SentencePiece source
+      - name: Modify Podfile to add Third-Party Spec Repos
         run: |
           PODFILE_PATH="ios/Podfile"
-          # This is a more robust way to prepend text to a file
-          # It creates a temporary file with the new content and then replaces the original
+          # This robust method prepends the required source lines to the Podfile
           {
-            echo "source 'https://github.com/google/sentencepiece.git'"
             echo "source 'https://github.com/CocoaPods/Specs.git'"
+            echo "source 'https://github.com/google/sentencepiece.git'" # For SentencePiece tokenizer
             cat "$PODFILE_PATH"
           } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
           
@@ -81,6 +89,7 @@ jobs:
       
       - name: Verify Pod Installation
         run: |
+          echo "Verifying key pods..."
           if [ ! -d "ios/Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
             exit 1
