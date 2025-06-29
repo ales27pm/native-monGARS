@@ -1,12 +1,20 @@
 {
-  "name": "template-app-53",
+  "name": "native-mongars",
   "version": "1.0.0",
   "main": "index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ales27pm/native-monGARS.git"
+  },
+  "author": "ales27pm",
+  "license": "MIT",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "security-check": "node scripts/verify-security.js",
+    "precommit": "npm run security-check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

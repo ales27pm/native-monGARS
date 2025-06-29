@@ -36,3 +36,9 @@ yarn-error.*
 # iOS & Android
 ios/
 android/
+
+# Sensitive environment files
+specialenv/
+.env.local
+.env.production
+*.env.backup

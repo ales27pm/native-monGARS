@@ -6,6 +6,7 @@ import FeatureFlagService, { FeatureFlags, FeatureFlag } from '../services/Featu
 import PerformanceMonitor from '../services/PerformanceMonitor';
 import ResilientLLMService from '../services/LLMProvider';
 import { AuthenticationService } from '../services/AuthenticationService';
+import GitHubService from '../services/GitHubService';
 
 interface DeveloperSettingsScreenProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ export const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = (
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [performanceData, setPerformanceData] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [githubInfo, setGithubInfo] = useState<any>(null);
 
   useEffect(() => {
     authenticateAndLoad();
@@ -34,7 +36,7 @@ export const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = (
     }
   };
 
-  const loadData = () => {
+  const loadData = async () => {
     // Load feature flags
     const allFlags = FeatureFlagService.getInstance().getAllFlags();
     setFlags(allFlags);
@@ -42,6 +44,21 @@ export const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = (
     // Load performance data
     const perfData = PerformanceMonitor.getInstance().getPerformanceSummary();
     setPerformanceData(perfData);
+
+    // Load GitHub info
+    try {
+      const projectInfo = GitHubService.getInstance().getProjectInfo();
+      const isAvailable = await GitHubService.getInstance().isAvailable();
+      const stats = isAvailable ? await GitHubService.getInstance().getRepoStats() : null;
+      
+      setGithubInfo({
+        project: projectInfo,
+        available: isAvailable,
+        stats,
+      });
+    } catch (error) {
+      console.error('Failed to load GitHub info:', error);
+    }
   };
 
   const toggleFeatureFlag = async (flagKey: FeatureFlags, enabled: boolean) => {
@@ -281,6 +298,50 @@ export const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = (
           )}
         </View>
 
+        {/* GitHub Integration */}
+        <View className="mt-6">
+          <Text className="text-lg font-semibold text-gray-900 px-4 mb-4">
+            🐙 GitHub Integration
+          </Text>
+          
+          <View className="px-4 mb-6">
+            {githubInfo ? (
+              <View className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <View className="flex-row justify-between">
+                  <Text className="text-gray-600">Repository</Text>
+                  <Text className="font-mono">{githubInfo.project.repo}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-gray-600">Owner</Text>
+                  <Text className="font-mono">{githubInfo.project.owner}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="text-gray-600">API Available</Text>
+                  <Text className="font-mono">{githubInfo.available ? '✅ Yes' : '❌ No'}</Text>
+                </View>
+                {githubInfo.stats && (
+                  <>
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-600">Stars</Text>
+                      <Text className="font-mono">⭐ {githubInfo.stats.stars}</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-600">Issues</Text>
+                      <Text className="font-mono">🐛 {githubInfo.stats.issues}</Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-gray-600">Forks</Text>
+                      <Text className="font-mono">🍴 {githubInfo.stats.forks}</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            ) : (
+              <Text className="text-gray-500 text-center py-4">Loading GitHub info...</Text>
+            )}
+          </View>
+        </View>
+
         {/* System Info */}
         <View className="mt-6 mb-8">
           <Text className="text-lg font-semibold text-gray-900 px-4 mb-4">
@@ -302,6 +363,12 @@ export const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = (
               <View className="flex-row justify-between">
                 <Text className="text-gray-600">Current LLM</Text>
                 <Text className="font-mono">{ResilientLLMService.getInstance().getCurrentProvider().name}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-gray-600">Project URL</Text>
+                <Text className="font-mono text-blue-600">
+                  {githubInfo?.project.url || 'github.com/ales27pm/native-monGARS'}
+                </Text>
               </View>
             </View>
           </View>

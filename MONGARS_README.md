@@ -2,6 +2,8 @@
 
 **Privacy-First AI Assistant** inspired by the original Swift implementation, built with React Native and Expo.
 
+**Repository**: [ales27pm/native-monGARS](https://github.com/ales27pm/native-monGARS)
+
 ## ✨ Features
 
 ### 🔐 **Privacy & Security**

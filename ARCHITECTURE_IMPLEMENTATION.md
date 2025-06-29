@@ -187,3 +187,13 @@ The architecture is now **production-ready** and **future-proof**, supporting th
 ---
 
 **monGARS React Native** - *Privacy-first AI that scales with your ambitions* 🚀
+
+---
+
+## 📁 **Project Repository**
+
+**GitHub**: [ales27pm/native-monGARS](https://github.com/ales27pm/native-monGARS)  
+**Owner**: ales27pm  
+**Project**: native-monGARS  
+
+---
