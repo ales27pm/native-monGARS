@@ -192,21 +192,23 @@ const listenOnce = async () => {
 
 ## 🏗️ GitHub Actions Workflows
 
-### 1. Continuous Integration (`.github/workflows/ci.yml`)
+**Note**: GitHub Actions workflows are now managed at the organization level in the `.github` repository. This allows all repositories in the organization to inherit these workflows automatically.
+
+### 1. Continuous Integration (`ci.yml`)
 Runs on every push and PR:
 - ✅ TypeScript type checking
 - ✅ Expo configuration validation
 - ✅ Native project prebuild verification
 - ✅ Dependency and package validation
 
-### 2. Core ML Model Build (`.github/workflows/build-coreml-model.yml`)
+### 2. Core ML Model Build (`build-coreml-model.yml`)
 Builds and compiles Core ML models:
 - 🤖 Downloads and converts Hugging Face models
 - 📱 Compiles for iOS using `xcrun coremlc`
 - 📦 Uploads model artifacts for deployment
 - ⚙️ Supports different quantization levels (float16, int8, int4)
 
-### 3. TestFlight Deployment (`.github/workflows/deploy-ios.yml`)
+### 3. TestFlight Deployment (`deploy-ios.yml`)
 Deploys to TestFlight:
 - 📱 Builds iOS app using EAS Build
 - 🤖 Downloads and integrates Core ML models
