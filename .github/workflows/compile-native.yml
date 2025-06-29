@@ -7,7 +7,6 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      # Trigger on changes to native code, project config, or patches
       - 'native-monGARS/ios/**'
       - 'native-monGARS/modules/**'
       - 'native-monGARS/package.json'
@@ -26,48 +25,50 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Set up Node.js without the built-in cache
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
-          cache: 'npm'
-          cache-dependency-path: native-monGARS/package-lock.json
 
-      - name: Clean Install Dependencies
+      # *** NEW ROBUST CACHING STEP ***
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: native-monGARS/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('native-monGARS/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install Dependencies & Apply Patches
         run: |
-          echo "Clearing npm cache and removing previous state..."
-          npm cache clean --force
-          rm -rf node_modules package-lock.json
-          
-          echo "Applying patches before installation..."
-          # This command requires the 'patches' directory to be inside the working directory
+          # Apply patches first, as they might affect dependency resolution
           npx patch-package
           
-          echo "Installing dependencies with --legacy-peer-deps..."
-          npm install --legacy-peer-deps
+          # Use npm ci for faster, more reliable installs with a lockfile
+          npm ci
 
       - name: Verify Critical Dependencies
         run: |
-          echo "Verifying that 'react-native' is installed..."
           if [ ! -f "node_modules/react-native/package.json" ]; then
-            echo "::error::'react-native' package was not found after install. Dependency resolution failed."
+            echo "::error::'react-native' package was not found. 'npm ci' failed."
             exit 1
           fi
           echo "✅ Critical dependencies are present."
 
+      # ... (The rest of the workflow remains the same) ...
+
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
-      - name: Modify Podfile to add Third-Party Spec Repos
+      - name: Modify Podfile to add SentencePiece source
         run: |
           PODFILE_PATH="ios/Podfile"
-          # This robust method prepends the required source lines to the Podfile
           {
+            echo "source 'https://github.com/google/sentencepiece.git'"
             echo "source 'https://github.com/CocoaPods/Specs.git'"
-            echo "source 'https://github.com/google/sentencepiece.git'" # For SentencePiece tokenizer
             cat "$PODFILE_PATH"
           } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
-          
           echo "--- Modified Podfile ---"
           cat "$PODFILE_PATH"
           echo "------------------------"
@@ -89,7 +90,6 @@ jobs:
       
       - name: Verify Pod Installation
         run: |
-          echo "Verifying key pods..."
           if [ ! -d "ios/Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
             exit 1
