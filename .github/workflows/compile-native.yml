@@ -7,48 +7,40 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'native-monGARS/ios/**'
-      - 'native-monGARS/modules/**'
-      - 'native-monGARS/package.json'
-      - 'native-monGARS/app.json'
-      - 'native-monGARS/patches/**'
+      - 'native-monGARS/**'
+      - 'modules/**'
+      - 'patches/**'
 
 jobs:
   compile-ios:
     runs-on: macos-14
     
-    defaults:
-      run:
-        working-directory: ./native-monGARS
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Set up Node.js without the built-in cache
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
 
-      # *** NEW ROBUST CACHING STEP ***
+      # Cache is defined relative to the repo root
       - name: Cache npm dependencies
+        id: npm-cache
         uses: actions/cache@v4
         with:
           path: native-monGARS/node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('native-monGARS/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
 
       - name: Install Dependencies & Apply Patches
+        # Run all commands from within the project directory
+        working-directory: ./native-monGARS
         run: |
-          # Apply patches first, as they might affect dependency resolution
           npx patch-package
-          
-          # Use npm ci for faster, more reliable installs with a lockfile
           npm ci
 
       - name: Verify Critical Dependencies
+        working-directory: ./native-monGARS
         run: |
           if [ ! -f "node_modules/react-native/package.json" ]; then
             echo "::error::'react-native' package was not found. 'npm ci' failed."
@@ -56,12 +48,12 @@ jobs:
           fi
           echo "✅ Critical dependencies are present."
 
-      # ... (The rest of the workflow remains the same) ...
-
       - name: Generate native iOS project
+        working-directory: ./native-monGARS
         run: npx expo prebuild --platform ios --no-install --clean
 
       - name: Modify Podfile to add SentencePiece source
+        working-directory: ./native-monGARS
         run: |
           PODFILE_PATH="ios/Podfile"
           {
@@ -78,17 +70,19 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-          working-directory: ./native-monGARS/ios
+          # working-directory for setup-ruby needs to be relative to the repo root
+          working-directory: native-monGARS/ios
 
       - name: Install CocoaPods
-        run: bundle install
         working-directory: ./native-monGARS/ios
+        run: bundle install
 
       - name: Run Pod Install
-        run: pod install --repo-update
         working-directory: ./native-monGARS/ios
+        run: pod install --repo-update
       
       - name: Verify Pod Installation
+        working-directory: ./native-monGARS
         run: |
           if [ ! -d "ios/Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
@@ -97,6 +91,7 @@ jobs:
           echo "✅ Pods installed successfully."
 
       - name: Compile Xcode Project
+        working-directory: ./native-monGARS
         run: |
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
             -scheme nativemongars \
