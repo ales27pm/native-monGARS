@@ -27,14 +27,12 @@ jobs:
           node-version: 18.x
 
       - name: Cache npm dependencies
-        id: npm-cache
         uses: actions/cache@v4
         with:
-          path: node_modules
+          path: ./node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
 
       - name: Install Dependencies & Apply Patches
-        # This now assumes a lockfile will be created or restored by the cache
         run: |
           npx patch-package
           npm ci
@@ -50,31 +48,31 @@ jobs:
             echo "source 'https://github.com/CocoaPods/Specs.git'"
             cat "$PODFILE_PATH"
           } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
-          echo "--- Modified Podfile for SentencePiece ---"
+          echo "--- Modified Podfile ---"
           cat "$PODFILE_PATH"
 
-      # *** CORRECTED RUBY/PODS SECTION ***
-      - name: Set up Ruby and Bundler
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          # Tell bundler to look for the Gemfile inside the ios directory
-          working-directory: ./ios 
-          bundler-cache: true # This will run 'bundle install' for us
+          bundler-cache: true
+          working-directory: ./ios
 
-      - name: Run Pod Install
-        # This step now only needs to run pod install
-        working-directory: ./ios
-        run: pod install --repo-update
-      
-      - name: Verify Pod Installation
+      # *** CONSOLIDATED AND CORRECTED POD INSTALL STEP ***
+      - name: Install and Verify Pods
+        working-directory: ./ios # All commands in this step run inside the ./ios directory
         run: |
-          if [ ! -d "ios/Pods/SentencePiece" ]; then
+          echo "Installing CocoaPods using Bundler..."
+          bundle install
+          echo "Installing Pods..."
+          pod install --repo-update
+          echo "Verifying SentencePiece installation..."
+          if [ ! -d "Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
             exit 1
           fi
           echo "✅ Pods installed successfully."
-
+      
       - name: Compile Xcode Project
         run: |
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
