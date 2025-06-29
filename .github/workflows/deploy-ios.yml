@@ -6,46 +6,29 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'App version (e.g., 1.0.0)'
+        description: 'App Version (e.g., 1.0.1)'
         required: true
-      build_number:
-        description: 'Build number (auto-incremented if not provided)'
-        required: false
-      model_artifact:
-        description: 'Model artifact name to use'
-        required: false
-        default: 'on-device-models-int8'
-      skip_model:
-        description: 'Skip downloading model (for testing)'
-        required: false
-        default: false
-        type: boolean
-
-env:
-  NODE_VERSION: '18.x'
+        type: string
+      buildNumber:
+        description: 'iOS Build Number (e.g., 2)'
+        required: true
+        type: string
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # EAS Build runs in the cloud, so the runner can be Linux
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Needed for version bump detection
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'bun'
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
+          node-version: 18.x
+          cache: 'npm'
 
       - name: Install dependencies
-        run: bun install
+        run: npm ci
 
       - name: Set up EAS CLI
         uses: expo/expo-github-action@v8
@@ -54,85 +37,34 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download On-Device Model Artifact
-        if: ${{ !inputs.skip_model }}
-        # This step is critical. It retrieves the compiled model.
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.model_artifact }}
-          path: assets/models # Store models in assets for Expo to bundle
-
-      - name: Update app version
+          name: on-device-models
+          path: ios/native-monGARS/Models
+      
+      - name: Verify Model Artifacts
         run: |
-          # Update app.json with the new version
-          bunx json -I -f app.json -e 'this.expo.version="${{ inputs.version }}"'
-          
-          # Set build number if provided, otherwise let EAS auto-increment
-          if [ -n "${{ inputs.build_number }}" ]; then
-            bunx json -I -f app.json -e 'this.expo.ios.buildNumber="${{ inputs.build_number }}"'
+          echo "Verifying downloaded model artifacts..."
+          ls -lR ios/native-monGARS/Models
+          if [ ! -d "ios/native-monGARS/Models/LLM.mlmodelc" ]; then
+            echo "::error::LLM.mlmodelc not found! Ensure the 'Build On-Device Core ML Model' workflow has run successfully."
+            exit 1
           fi
 
-      - name: Configure App Store Connect API
+      - name: Set App Version and Build Number
+        # This is the critical step to automate versioning.
+        # It uses jq to update app.json in place.
         run: |
-          # Create the App Store Connect API key file
-          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}" > /tmp/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          echo "Setting app version to ${{ github.event.inputs.version }} and build number to ${{ github.event.inputs.buildNumber }}"
+          # Install jq if not present
+          sudo apt-get update && sudo apt-get install -y jq
           
-          # Update eas.json with App Store Connect configuration
-          bunx json -I -f eas.json -e '
-            this.submit.production.ios.appleId = "${{ secrets.APPLE_ID }}"
-            this.submit.production.ios.ascAppId = "${{ secrets.ASC_APP_ID }}"
-            this.submit.production.ios.appleTeamId = "${{ secrets.APPLE_TEAM_ID }}"
-          '
-
-      - name: Pre-build validation
-        run: |
-          # Validate EAS configuration
-          eas config --platform=ios
+          # Update app.json
+          jq '.expo.version = "${{ github.event.inputs.version }}" | .expo.ios.buildNumber = "${{ github.event.inputs.buildNumber }}"' app.json > tmp.$$.json && mv tmp.$$.json app.json
           
-          # Check if models are available (if not skipped)
-          if [ "${{ inputs.skip_model }}" != "true" ]; then
-            if [ -d "assets/models" ]; then
-              echo "✅ Models found:"
-              ls -la assets/models/
-            else
-              echo "⚠️ No models found, continuing without on-device models"
-            fi
-          fi
+          echo "Updated app.json:"
+          cat app.json
 
-      - name: Build for iOS
-        env:
-          EXPO_APPLE_ID: ${{ secrets.APPLE_ID }}
-          EXPO_ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
-          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
-          EXPO_ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          EXPO_ASC_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-        run: |
-          # Build the app using EAS Build
-          eas build --platform ios --profile production --non-interactive --wait
-
-      - name: Submit to TestFlight
-        env:
-          EXPO_APPLE_ID: ${{ secrets.APPLE_ID }}
-          EXPO_ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
-          EXPO_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
-          EXPO_ASC_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          EXPO_ASC_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
-        run: |
-          # Submit to TestFlight
-          eas submit --platform ios --profile production --non-interactive --latest
-
-      - name: Clean up
-        if: always()
-        run: |
-          # Remove the API key file
-          rm -f /tmp/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
-
-      - name: Create deployment summary
-        run: |
-          echo "## iOS Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Build Number**: ${{ inputs.build_number || 'Auto-incremented' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Model Artifact**: ${{ inputs.model_artifact }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ Submitted to TestFlight" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Steps**: Check TestFlight for processing status" >> $GITHUB_STEP_SUMMARY
+      - name: Build and Submit to TestFlight
+        # EAS Build will now use the updated version from app.json
+        run: eas build --platform ios --profile release --non-interactive --auto-submit
