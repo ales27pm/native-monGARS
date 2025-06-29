@@ -1,0 +1,92 @@
+# .github/workflows/build-coreml-model.yml
+
+name: Build On-Device Core ML Model
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      model_name:
+        description: 'Model to convert (e.g., microsoft/Phi-3-mini-4k-instruct)'
+        required: false
+        default: 'microsoft/Phi-3-mini-4k-instruct'
+      quantization:
+        description: 'Model quantization level'
+        required: false
+        default: 'int8'
+        type: choice
+        options:
+          - 'float16'
+          - 'int8'
+          - 'int4'
+  # Also run it automatically if the conversion script changes
+  push:
+    paths:
+      - 'scripts/convert_model_to_coreml.py'
+      - 'scripts/requirements.txt'
+
+jobs:
+  build-coreml:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Create model directory
+        run: mkdir -p Models
+
+      - name: Convert Hugging Face model to Core ML
+        # This script should download the model and convert it.
+        # Ensure it saves the output to the 'Models' directory.
+        env:
+          MODEL_NAME: ${{ github.event.inputs.model_name || 'microsoft/Phi-3-mini-4k-instruct' }}
+          QUANTIZATION: ${{ github.event.inputs.quantization || 'int8' }}
+        run: python scripts/convert_model_to_coreml.py
+
+      - name: Compile Core ML model for iOS
+        # xcrun is only available on macOS runners. This compiles the .mlmodel
+        # into the .mlmodelc directory, which is optimized for the device.
+        run: |
+          xcrun coremlc compile Models/LLM.mlmodel Models/
+          ls -la Models/
+
+      - name: Validate Core ML model
+        run: |
+          # Verify the model was compiled successfully
+          if [ -d "Models/LLM.mlmodelc" ]; then
+            echo "✅ Core ML model compiled successfully"
+            du -sh Models/LLM.mlmodelc
+          else
+            echo "❌ Core ML model compilation failed"
+            exit 1
+          fi
+
+      - name: Upload Core ML model artifact
+        # This makes the compiled model available to other workflows.
+        uses: actions/upload-artifact@v4
+        with:
+          name: on-device-models-${{ github.event.inputs.quantization || 'int8' }}
+          path: |
+            Models/LLM.mlmodelc
+            Models/tokenizer.model
+            Models/model_info.json
+          retention-days: 30
+
+      - name: Create model summary
+        run: |
+          echo "## Core ML Model Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model**: ${{ github.event.inputs.model_name || 'microsoft/Phi-3-mini-4k-instruct' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Quantization**: ${{ github.event.inputs.quantization || 'int8' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $(du -sh Models/LLM.mlmodelc | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifact**: on-device-models-${{ github.event.inputs.quantization || 'int8' }}" >> $GITHUB_STEP_SUMMARY

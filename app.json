@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "native-monGARS",
+    "slug": "native-mongars",
+    "scheme": "native-mongars",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "react-native-wakeword",
+      "@react-native-voice/voice",
+      "expo-notifications",
+      "expo-task-manager",
+      "expo-background-fetch",
+      "expo-build-properties"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ales27pm.nativemongars",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app needs access to microphone for voice recognition and wake word detection.",
+        "NSSpeechRecognitionUsageDescription": "This app needs access to speech recognition to convert your voice to text.",
+        "NSCalendarsUsageDescription": "This app needs access to your calendar to provide proactive meeting reminders and weather alerts.",
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide weather and travel time information.",
+        "UIBackgroundModes": ["background-fetch", "background-processing"]
+      }
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.ales27pm.nativemongars",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
+    }
+  }
+}
