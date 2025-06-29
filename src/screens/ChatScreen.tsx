@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../state/appState';
 import { AssistantService } from '../services/AssistantService';
-import { BiometricService } from '../services/BiometricService';
+import { AuthenticationService } from '../services/AuthenticationService';
 import { AssistantMessage } from '../types/core';
 import { MessageBubble } from '../components/MessageBubble';
+import { DemoNotice } from '../components/DemoNotice';
+import { AppInfo } from '../components/AppInfo';
 
 export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSettings }) => {
   const [inputText, setInputText] = useState('');
@@ -25,7 +27,7 @@ export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSet
   } = useAppStore();
 
   const assistantService = AssistantService.getInstance();
-  const biometricService = BiometricService.getInstance();
+  const authService = AuthenticationService.getInstance();
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -43,7 +45,7 @@ export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSet
 
   const checkAuthentication = async () => {
     if (!isAuthenticated) {
-      const result = await biometricService.authenticate("Déverrouiller monGARS pour accéder à vos conversations");
+      const result = await authService.authenticate("Déverrouiller monGARS pour accéder à vos conversations");
       setAuthenticated(result.success);
       
       if (!result.success) {
@@ -146,7 +148,9 @@ export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSet
             </View>
             <View>
               <Text className="text-lg font-bold text-gray-900">monGARS</Text>
-              <Text className="text-xs text-gray-500">Assistant privé</Text>
+              <Text className="text-xs text-gray-500">
+                Assistant privé {authService.isUsingMockAuthentication() ? '(Mode démo)' : ''}
+              </Text>
             </View>
           </View>
           
@@ -154,6 +158,9 @@ export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSet
             <Ionicons name="settings" size={24} color="#6B7280" />
           </Pressable>
         </View>
+
+        {/* Demo Notice */}
+        {authService.isUsingMockAuthentication() && <DemoNotice />}
 
         {/* Messages */}
         <ScrollView
@@ -187,9 +194,11 @@ export const ChatScreen: React.FC<{ onShowSettings: () => void }> = ({ onShowSet
                   <Text className="text-sm text-gray-500 ml-2">Protégé par authentification biométrique</Text>
                 </View>
               </View>
-              <Text className="text-gray-400 text-center mt-6">
+              <Text className="text-gray-400 text-center mt-6 mb-8">
                 Tapez votre première question pour commencer
               </Text>
+              
+              <AppInfo />
             </View>
           ) : (
             messages.map((message, index) => (

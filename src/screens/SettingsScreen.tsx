@@ -3,7 +3,7 @@ import { View, Text, Pressable, ScrollView, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../state/appState';
-import { BiometricService } from '../services/BiometricService';
+import { AuthenticationService } from '../services/AuthenticationService';
 import { MemoryService } from '../services/MemoryService';
 import { AuditService } from '../services/AuditService';
 import { AuditEvent } from '../types/core';
@@ -30,7 +30,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
     resetApp
   } = useAppStore();
 
-  const biometricService = BiometricService.getInstance();
+  const authService = AuthenticationService.getInstance();
   const memoryService = MemoryService.getInstance();
   const auditService = AuditService.getInstance();
 
@@ -52,7 +52,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
 
   const handleBiometricToggle = async (enabled: boolean) => {
     if (enabled) {
-      const result = await biometricService.authenticate("Activer l'authentification biométrique");
+      const result = await authService.authenticate("Activer l'authentification biométrique");
       if (result.success) {
         setBiometricEnabled(true);
         auditService.log('settings_change', 'Biometric authentication enabled');
@@ -60,7 +60,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
         Alert.alert("Erreur", result.error || "Impossible d'activer l'authentification biométrique");
       }
     } else {
-      const result = await biometricService.authenticate("Désactiver l'authentification biométrique");
+      const result = await authService.authenticate("Désactiver l'authentification biométrique");
       if (result.success) {
         setBiometricEnabled(false);
         auditService.log('settings_change', 'Biometric authentication disabled');
@@ -69,7 +69,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   };
 
   const handleClearMemories = async () => {
-    const result = await biometricService.authenticate("Confirmer la suppression des mémoires");
+    const result = await authService.authenticate("Confirmer la suppression des mémoires");
     if (!result.success) return;
 
     Alert.alert(
@@ -96,7 +96,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   };
 
   const handlePanicWipe = async () => {
-    const result = await biometricService.authenticate("PANIC WIPE - Confirmer la suppression totale");
+    const result = await authService.authenticate("PANIC WIPE - Confirmer la suppression totale");
     if (!result.success) return;
 
     Alert.alert(

@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { MemoryService } from '../services/MemoryService';
-import { BiometricService } from '../services/BiometricService';
+import { AuthenticationService } from '../services/AuthenticationService';
 import { MemoryEntry } from '../types/core';
 
 interface MemoryExplorerScreenProps {
@@ -18,14 +18,14 @@ export const MemoryExplorerScreen: React.FC<MemoryExplorerScreenProps> = ({ onCl
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const memoryService = MemoryService.getInstance();
-  const biometricService = BiometricService.getInstance();
+  const authService = AuthenticationService.getInstance();
 
   useEffect(() => {
     authenticateAndLoad();
   }, []);
 
   const authenticateAndLoad = async () => {
-    const result = await biometricService.authenticate("Accéder aux mémoires privées");
+    const result = await authService.authenticate("Accéder aux mémoires privées");
     if (result.success) {
       setIsAuthenticated(true);
       await loadMemories();
@@ -63,7 +63,7 @@ export const MemoryExplorerScreen: React.FC<MemoryExplorerScreenProps> = ({ onCl
           text: "Supprimer",
           style: "destructive",
           onPress: async () => {
-            const authResult = await biometricService.authenticate("Confirmer la suppression");
+            const authResult = await authService.authenticate("Confirmer la suppression");
             if (authResult.success) {
               const success = await memoryService.deleteMemory(memory.id);
               if (success) {

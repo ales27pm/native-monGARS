@@ -3,7 +3,7 @@ import { View, Text, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppStore } from '../state/appState';
-import { BiometricService } from '../services/BiometricService';
+import { AuthenticationService } from '../services/AuthenticationService';
 import { AuditService } from '../services/AuditService';
 
 const onboardingSteps = [
@@ -63,8 +63,18 @@ export const OnboardingScreen: React.FC = () => {
     setIsSettingUpBiometric(true);
     
     try {
-      const biometricService = BiometricService.getInstance();
-      const isAvailable = await biometricService.isAvailable();
+      const authService = AuthenticationService.getInstance();
+      
+      // Show demo notice if using mock authentication
+      if (authService.isUsingMockAuthentication()) {
+        Alert.alert(
+          "Mode démo",
+          "Cette version utilise une authentification simulée pour la démonstration. En production, Face ID/Touch ID serait utilisé.",
+          [{ text: "Compris", onPress: () => {} }]
+        );
+      }
+      
+      const isAvailable = await authService.isAvailable();
       
       if (!isAvailable) {
         Alert.alert(
@@ -83,7 +93,7 @@ export const OnboardingScreen: React.FC = () => {
         return;
       }
 
-      const result = await biometricService.authenticate("Configurer l'authentification pour monGARS");
+      const result = await authService.authenticate("Configurer l'authentification pour monGARS");
       
       if (result.success) {
         setBiometricEnabled(true);
