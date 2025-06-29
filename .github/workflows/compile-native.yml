@@ -25,23 +25,43 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
-          # Caching now uses the correct root-level lockfile path
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
 
+      # Step 1: Check for an existing cache
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+
+      - name: Restore npm cache
+        uses: actions/cache@v4
+        id: npm-cache # use the same id to get "hit" status
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      # Step 2: Install dependencies. This will create package-lock.json if it doesn't exist.
       - name: Install Dependencies & Apply Patches
         run: |
-          # These commands run from the repository root
           npx patch-package
-          npm ci
+          # Use install, not ci, because lockfile might not exist on first run
+          npm install --legacy-peer-deps
 
+      - name: Verify Critical Dependencies
+        run: |
+          if [ ! -f "node_modules/react-native/package.json" ]; then
+            echo "::error::'react-native' package was not found. 'npm install' failed."
+            exit 1
+          fi
+          echo "✅ Critical dependencies are present."
+
+      # ... (The rest of the workflow is the same and should now work) ...
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
       - name: Modify Podfile to add Third-Party Sources
         run: |
           PODFILE_PATH="ios/Podfile"
-          # This robust method prepends the required source lines to the Podfile
           {
             echo "source 'https://github.com/google/sentencepiece.git'"
             echo "source 'https://github.com/CocoaPods/Specs.git'"
@@ -55,11 +75,9 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-          # This action requires the path to the directory with the Gemfile
           working-directory: ./ios
 
       - name: Install and Run Pod Install
-        # These commands need to be run from the ios directory
         working-directory: ./ios
         run: |
           bundle install
@@ -75,7 +93,6 @@ jobs:
 
       - name: Compile Xcode Project
         run: |
-          # The workspace and scheme paths are relative to the repository root
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
             -scheme nativemongars \
             -sdk iphonesimulator \
