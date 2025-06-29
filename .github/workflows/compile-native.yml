@@ -24,7 +24,6 @@ jobs:
         with:
           node-version: 18.x
 
-      # Cache is defined relative to the repo root
       - name: Cache npm dependencies
         id: npm-cache
         uses: actions/cache@v4
@@ -33,15 +32,14 @@ jobs:
           key: ${{ runner.os }}-npm-${{ hashFiles('native-monGARS/package-lock.json') }}
 
       - name: Install Dependencies & Apply Patches
-        # Run all commands from within the project directory
-        working-directory: ./native-monGARS
         run: |
+          cd native-monGARS
           npx patch-package
           npm ci
 
       - name: Verify Critical Dependencies
-        working-directory: ./native-monGARS
         run: |
+          cd native-monGARS
           if [ ! -f "node_modules/react-native/package.json" ]; then
             echo "::error::'react-native' package was not found. 'npm ci' failed."
             exit 1
@@ -49,12 +47,13 @@ jobs:
           echo "✅ Critical dependencies are present."
 
       - name: Generate native iOS project
-        working-directory: ./native-monGARS
-        run: npx expo prebuild --platform ios --no-install --clean
+        run: |
+          cd native-monGARS
+          npx expo prebuild --platform ios --no-install --clean
 
       - name: Modify Podfile to add SentencePiece source
-        working-directory: ./native-monGARS
         run: |
+          cd native-monGARS
           PODFILE_PATH="ios/Podfile"
           {
             echo "source 'https://github.com/google/sentencepiece.git'"
@@ -70,19 +69,18 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-          # working-directory for setup-ruby needs to be relative to the repo root
           working-directory: native-monGARS/ios
 
       - name: Install CocoaPods
-        working-directory: ./native-monGARS/ios
+        working-directory: native-monGARS/ios
         run: bundle install
 
       - name: Run Pod Install
-        working-directory: ./native-monGARS/ios
+        working-directory: native-monGARS/ios
         run: pod install --repo-update
       
       - name: Verify Pod Installation
-        working-directory: ./native-monGARS
+        working-directory: native-monGARS
         run: |
           if [ ! -d "ios/Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
@@ -91,7 +89,7 @@ jobs:
           echo "✅ Pods installed successfully."
 
       - name: Compile Xcode Project
-        working-directory: ./native-monGARS
+        working-directory: native-monGARS
         run: |
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
             -scheme nativemongars \
