@@ -2,9 +2,6 @@
 
 name: Deploy iOS to TestFlight
 
-# CORRECTED TRIGGER:
-# This workflow will now ONLY run when you manually trigger it from the
-# GitHub Actions UI. This prevents accidental deployments on every push.
 on:
   workflow_dispatch:
     inputs:
@@ -13,13 +10,21 @@ on:
         required: true
         type: string
       buildNumber:
-        description: 'iOS Build Number (e.g., 3)'
+        description: 'iOS Build Number (e.g., 4)'
         required: true
         type: string
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
+    # *** KEY FIX #1 ***
+    # Set the default working directory for all 'run' steps in this job.
+    # All commands will now execute inside your React Native project folder.
+    defaults:
+      run:
+        working-directory: ./native-monGARS
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,9 +33,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
+          # Caching now needs to reference the correct package-lock.json
           cache: 'npm'
+          cache-dependency-path: native-monGARS/package-lock.json
 
       - name: Install dependencies
+        # This command will now run inside './native-monGARS'
         run: npm ci
 
       - name: Set up EAS CLI
@@ -40,13 +48,16 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download On-Device Model Artifact
-        # This requires the "Build On-Device Core ML Model" workflow to have run successfully before.
+        # This path is relative to the repository root, so it needs the full path.
         uses: actions/download-artifact@v4
         with:
           name: on-device-models
-          path: ios/native-monGARS/Models
+          # *** KEY FIX #2 ***
+          # Correct the download path to account for the nested directory.
+          path: native-monGARS/ios/native-monGARS/Models
       
       - name: Verify Model Artifacts
+        # This command runs inside './native-monGARS' and the path is relative to it.
         run: |
           echo "Verifying downloaded model artifacts..."
           ls -lR ios/native-monGARS/Models
@@ -56,12 +67,17 @@ jobs:
           fi
 
       - name: Set App Version and Build Number
+        # This command now runs inside './native-monGARS' and will find app.json.
         run: |
           echo "Setting app version to ${{ github.event.inputs.version }} and build number to ${{ github.event.inputs.buildNumber }}"
           sudo apt-get update && sudo apt-get install -y jq
+          
+          # The 'app.json' file is now in the current working directory.
           jq '.expo.version = "${{ github.event.inputs.version }}" | .expo.ios.buildNumber = "${{ github.event.inputs.buildNumber }}"' app.json > tmp.$$.json && mv tmp.$$.json app.json
+          
           echo "Updated app.json:"
           cat app.json
 
       - name: Build and Submit to TestFlight
+        # EAS will find eas.json and app.json in the current working directory.
         run: eas build --platform ios --profile release --non-interactive --auto-submit
