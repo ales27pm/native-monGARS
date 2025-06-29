@@ -4,14 +4,6 @@ name: Compile Native iOS Project (Turbo Modules)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
-    paths:
-      - 'ios/**'
-      - 'modules/**'
-      - 'package.json'
-      - 'app.json'
-      - 'patches/**'
 
 jobs:
   compile-ios:
@@ -40,7 +32,7 @@ jobs:
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
-      - name: Modify Podfile to add Third-Party Sources
+      - name: Modify Podfile
         run: |
           PODFILE_PATH="ios/Podfile"
           {
@@ -48,31 +40,28 @@ jobs:
             echo "source 'https://github.com/CocoaPods/Specs.git'"
             cat "$PODFILE_PATH"
           } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
-          echo "--- Modified Podfile ---"
-          cat "$PODFILE_PATH"
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-          working-directory: ./ios
-
-      # *** CONSOLIDATED AND CORRECTED POD INSTALL STEP ***
-      - name: Install and Verify Pods
-        working-directory: ./ios # All commands in this step run inside the ./ios directory
+      # *** NEW, CONSOLIDATED, AND FORCEFUL NATIVE DEPENDENCY STEP ***
+      - name: Install and Run CocoaPods
         run: |
-          echo "Installing CocoaPods using Bundler..."
+          echo "Navigating to iOS directory..."
+          cd ios
+          
+          echo "Current directory: $(pwd)"
+          echo "Listing files to confirm Gemfile exists:"
+          ls -l
+          
+          echo "Setting up Ruby environment..."
+          # Manually setup ruby environment for the current shell session
+          echo "/opt/homebrew/opt/ruby/bin" >> $GITHUB_PATH
+          gem install bundler
+          
+          echo "Installing gems using Bundler..."
           bundle install
-          echo "Installing Pods..."
-          pod install --repo-update
-          echo "Verifying SentencePiece installation..."
-          if [ ! -d "Pods/SentencePiece" ]; then
-            echo "::error::'pod install' failed. SentencePiece pod was not found."
-            exit 1
-          fi
-          echo "✅ Pods installed successfully."
-      
+          
+          echo "Installing Pods with repo update..."
+          bundle exec pod install --repo-update
+
       - name: Compile Xcode Project
         run: |
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
