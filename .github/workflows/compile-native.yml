@@ -26,36 +26,19 @@ jobs:
         with:
           node-version: 18.x
 
-      # Step 1: Check for an existing cache
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
-
-      - name: Restore npm cache
+      - name: Cache npm dependencies
+        id: npm-cache
         uses: actions/cache@v4
-        id: npm-cache # use the same id to get "hit" status
         with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          path: node_modules
           key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
 
-      # Step 2: Install dependencies. This will create package-lock.json if it doesn't exist.
       - name: Install Dependencies & Apply Patches
+        # This now assumes a lockfile will be created or restored by the cache
         run: |
           npx patch-package
-          # Use install, not ci, because lockfile might not exist on first run
-          npm install --legacy-peer-deps
+          npm ci
 
-      - name: Verify Critical Dependencies
-        run: |
-          if [ ! -f "node_modules/react-native/package.json" ]; then
-            echo "::error::'react-native' package was not found. 'npm install' failed."
-            exit 1
-          fi
-          echo "✅ Critical dependencies are present."
-
-      # ... (The rest of the workflow is the same and should now work) ...
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
@@ -70,18 +53,19 @@ jobs:
           echo "--- Modified Podfile for SentencePiece ---"
           cat "$PODFILE_PATH"
 
-      - name: Set up Ruby and Bundler for CocoaPods
+      # *** CORRECTED RUBY/PODS SECTION ***
+      - name: Set up Ruby and Bundler
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.2'
-          bundler-cache: true
-          working-directory: ./ios
+          # Tell bundler to look for the Gemfile inside the ios directory
+          working-directory: ./ios 
+          bundler-cache: true # This will run 'bundle install' for us
 
-      - name: Install and Run Pod Install
+      - name: Run Pod Install
+        # This step now only needs to run pod install
         working-directory: ./ios
-        run: |
-          bundle install
-          pod install --repo-update
+        run: pod install --repo-update
       
       - name: Verify Pod Installation
         run: |
