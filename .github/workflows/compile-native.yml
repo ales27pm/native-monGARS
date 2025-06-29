@@ -7,8 +7,10 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'native-monGARS/**'
+      - 'ios/**'
       - 'modules/**'
+      - 'package.json'
+      - 'app.json'
       - 'patches/**'
 
 jobs:
@@ -23,27 +25,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          # Path to the node_modules directory relative to the repo root
-          path: native-monGARS/node_modules
-          # Hash of the lockfile relative to the repo root
-          key: ${{ runner.os }}-npm-${{ hashFiles('native-monGARS/package-lock.json') }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies & Apply Patches
         run: |
-          # All commands are run from the repo root, so we specify the --prefix
-          npm --prefix native-monGARS ci
-          npx patch-package --patch-dir native-monGARS/patches
+          npx patch-package
+          npm ci
+
+      - name: Verify Critical Dependencies
+        run: |
+          if [ ! -f "node_modules/react-native/package.json" ]; then
+            echo "::error::'react-native' package was not found. 'npm ci' failed."
+            exit 1
+          fi
+          echo "✅ Critical dependencies are present."
 
       - name: Generate native iOS project
-        run: npx --prefix native-monGARS expo prebuild --platform ios --no-install --clean
+        run: npx expo prebuild --platform ios --no-install --clean
 
       - name: Modify Podfile to add SentencePiece source
         run: |
-          PODFILE_PATH="native-monGARS/ios/Podfile"
+          PODFILE_PATH="ios/Podfile"
           {
             echo "source 'https://github.com/google/sentencepiece.git'"
             echo "source 'https://github.com/CocoaPods/Specs.git'"
@@ -58,19 +61,17 @@ jobs:
         with:
           ruby-version: '3.2'
           bundler-cache: true
-          # This action requires the path to the directory with the Gemfile
-          working-directory: native-monGARS/ios
+          working-directory: ./ios
 
       - name: Install and Run Pod Install
-        # These commands need to be run from the ios directory
-        working-directory: native-monGARS/ios
+        working-directory: ./ios
         run: |
           bundle install
           pod install --repo-update
       
       - name: Verify Pod Installation
         run: |
-          if [ ! -d "native-monGARS/ios/Pods/SentencePiece" ]; then
+          if [ ! -d "ios/Pods/SentencePiece" ]; then
             echo "::error::'pod install' failed. SentencePiece pod was not found."
             exit 1
           fi
@@ -78,7 +79,8 @@ jobs:
 
       - name: Compile Xcode Project
         run: |
-          xcodebuild build -workspace native-monGARS/ios/nativemongars.xcworkspace \
+          # The scheme name should match the 'name' in app.json, often lowercased
+          xcodebuild build -workspace ios/nativemongars.xcworkspace \
             -scheme nativemongars \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
