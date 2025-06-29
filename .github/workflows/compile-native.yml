@@ -1,86 +1,34 @@
 # .github/workflows/compile-native.yml
 
-name: Compile Native iOS Project (Turbo Modules)
+name: DEBUG - Compile Native iOS Project
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Manual trigger only
   push:
     branches: [ "main" ]
-    paths:
-      - 'ios/**'
-      - 'modules/**'
-      - 'package.json'
-      - 'app.json'
-      - 'patches/**'
 
 jobs:
-  compile-ios:
+  debug-paths:
     runs-on: macos-14
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18.x
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install Dependencies & Apply Patches
+      - name: 1. List files at the initial working directory
         run: |
-          npx patch-package
-          npm ci
+          echo "--- Files and directories at initial location (pwd) ---"
+          pwd
+          echo "--------------------------------------------------------"
+          ls -laR
+          echo "--------------------------------------------------------"
 
-      - name: Verify Critical Dependencies
+      - name: 2. List files one directory up
         run: |
-          if [ ! -f "node_modules/react-native/package.json" ]; then
-            echo "::error::'react-native' package was not found. 'npm ci' failed."
-            exit 1
-          fi
-          echo "✅ Critical dependencies are present."
-
-      - name: Generate native iOS project
-        run: npx expo prebuild --platform ios --no-install --clean
-
-      - name: Modify Podfile to add SentencePiece source
-        run: |
-          PODFILE_PATH="ios/Podfile"
-          {
-            echo "source 'https://github.com/google/sentencepiece.git'"
-            echo "source 'https://github.com/CocoaPods/Specs.git'"
-            cat "$PODFILE_PATH"
-          } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
-          echo "--- Modified Podfile ---"
-          cat "$PODFILE_PATH"
-          echo "------------------------"
-
-      - name: Set up Ruby and Bundler for CocoaPods
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-          bundler-cache: true
-          working-directory: ./ios
-
-      - name: Install and Run Pod Install
-        working-directory: ./ios
-        run: |
-          bundle install
-          pod install --repo-update
-      
-      - name: Verify Pod Installation
-        run: |
-          if [ ! -d "ios/Pods/SentencePiece" ]; then
-            echo "::error::'pod install' failed. SentencePiece pod was not found."
-            exit 1
-          fi
-          echo "✅ Pods installed successfully."
-
-      - name: Compile Xcode Project
-        run: |
-          # The scheme name should match the 'name' in app.json, often lowercased
-          xcodebuild build -workspace ios/nativemongars.xcworkspace \
-            -scheme nativemongars \
-            -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+          echo "--- Files and directories one level UP (../) ---"
+          pwd
+          cd ..
+          echo "New PWD: $(pwd)"
+          echo "------------------------------------------------"
+          ls -laR
+          echo "------------------------------------------------"
