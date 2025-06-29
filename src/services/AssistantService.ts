@@ -1,8 +1,9 @@
-import { getAnthropicTextResponse } from '../api/chat-service';
 import { AssistantMessage } from '../types/core';
 import { AIMessage } from '../types/ai';
 import { MemoryService } from './MemoryService';
 import { AuditService } from './AuditService';
+import ResilientLLMService from './LLMProvider';
+import FeatureFlagService, { FeatureFlags } from './FeatureFlagService';
 import * as Speech from 'expo-speech';
 
 export class AssistantService {
@@ -31,86 +32,154 @@ export class AssistantService {
         content: msg.content
       }));
 
-      // Add context from memory
-      const recentMemories = await this.memoryService.getMemories(undefined, 5);
-      if (recentMemories.length > 0) {
-        const memoryContext = recentMemories
-          .map(m => `[Mémoire: ${m.content}]`)
-          .join('\n');
-        
-        aiMessages.unshift({
-          role: 'system',
-          content: `Tu es monGARS, un assistant IA privé et sécurisé qui fonctionne entièrement sur l'appareil de l'utilisateur. Tu parles français canadien et tu es très utile, respectueux et empathique. 
-
-Caractéristiques importantes:
-- Tu es 100% privé - aucune donnée ne quitte l'appareil
-- Tu es sécurisé par authentification biométrique 
-- Tu peux mémoriser les conversations importantes
-- Tu respectes la vie privée absolument
-- Répond en français canadien de manière naturelle et conversationnelle
-
-Voici quelques mémoires récentes pour le contexte:\n${memoryContext}`
-        });
+      // Add context from memory if enabled
+      if (FeatureFlagService.getInstance().isEnabled(FeatureFlags.CONTEXT_MEMORY)) {
+        const recentMemories = await this.memoryService.getMemories(undefined, 5);
+        if (recentMemories.length > 0) {
+          const memoryContext = recentMemories
+            .map(m => `[Mémoire: ${m.content}]`)
+            .join('\n');
+          
+          aiMessages.unshift({
+            role: 'system',
+            content: this.getSystemPrompt(memoryContext)
+          });
+        } else {
+          aiMessages.unshift({
+            role: 'system',
+            content: this.getSystemPrompt()
+          });
+        }
       } else {
         aiMessages.unshift({
           role: 'system',
-          content: `Tu es monGARS, un assistant IA privé et sécurisé qui fonctionne entièrement sur l'appareil de l'utilisateur. Tu parles français canadien et tu es très utile, respectueux et empathique.
+          content: this.getSystemPrompt()
+        });
+      }
+
+      const llmService = ResilientLLMService.getInstance();
+      const currentProvider = llmService.getCurrentProvider();
+
+      // Use streaming if supported and enabled
+      if (FeatureFlagService.getInstance().isEnabled(FeatureFlags.STREAMING_RESPONSES) && 
+          currentProvider.supportsStreaming && onToken) {
+        
+        let fullResponse = '';
+        
+        await llmService.streamResponse(aiMessages, {
+          maxTokens: 1024,
+          temperature: 0.7
+        }, {
+          onToken: (token) => {
+            fullResponse = token;
+            onToken(token);
+          },
+          onComplete: (response) => {
+            fullResponse = response.content;
+            this.saveConversationMemory(messages, fullResponse);
+            if (onComplete) {
+              onComplete(fullResponse);
+            }
+          },
+          onError: (error) => {
+            console.error('Streaming failed:', error);
+            this.handleGenerationError(error, onToken, onComplete);
+          }
+        });
+
+        return fullResponse;
+      } else {
+        // Non-streaming response
+        const response = await llmService.generateResponse(aiMessages, {
+          maxTokens: 1024,
+          temperature: 0.7
+        });
+
+        const fullResponse = response.content;
+
+        // Simulate streaming for consistency
+        if (onToken) {
+          const words = fullResponse.split(' ');
+          for (let i = 0; i < words.length; i++) {
+            const partial = words.slice(0, i + 1).join(' ');
+            onToken(partial);
+            await new Promise(resolve => setTimeout(resolve, 30));
+          }
+        }
+
+        await this.saveConversationMemory(messages, fullResponse);
+
+        if (onComplete) {
+          onComplete(fullResponse);
+        }
+
+        return fullResponse;
+      }
+    } catch (error) {
+      console.error('Failed to generate response:', error);
+      return this.handleGenerationError(error, onToken, onComplete);
+    }
+  }
+
+  private getSystemPrompt(memoryContext?: string): string {
+    const basePrompt = `Tu es monGARS, un assistant IA privé et sécurisé qui fonctionne entièrement sur l'appareil de l'utilisateur. Tu parles français canadien et tu es très utile, respectueux et empathique.
 
 Caractéristiques importantes:
 - Tu es 100% privé - aucune donnée ne quitte l'appareil
 - Tu es sécurisé par authentification biométrique
 - Tu respectes la vie privée absolument  
-- Répond en français canadien de manière naturelle et conversationnelle`
-        });
-      }
+- Répond en français canadien de manière naturelle et conversationnelle`;
 
-      // For streaming simulation, we'll get the full response and then emit tokens
-      const response = await getAnthropicTextResponse(aiMessages, {
-        maxTokens: 1024,
-        temperature: 0.7
-      });
+    if (memoryContext) {
+      return `${basePrompt}
+- Tu peux mémoriser les conversations importantes
 
-      const fullResponse = response.content;
+Voici quelques mémoires récentes pour le contexte:
+${memoryContext}`;
+    }
 
-      // Simulate streaming by emitting tokens
-      if (onToken) {
-        const words = fullResponse.split(' ');
-        for (let i = 0; i < words.length; i++) {
-          const partial = words.slice(0, i + 1).join(' ');
-          onToken(partial);
-          
-          // Small delay to simulate streaming
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
+    return basePrompt;
+  }
 
-      // Save the conversation to memory
+  private async saveConversationMemory(messages: AssistantMessage[], response: string): Promise<void> {
+    if (!FeatureFlagService.getInstance().isEnabled(FeatureFlags.CONTEXT_MEMORY)) {
+      return;
+    }
+
+    try {
       await this.memoryService.saveMemory(
-        `Q: ${messages[messages.length - 1]?.content || ''}\nR: ${fullResponse}`,
-        { type: 'conversation', timestamp: Date.now() }
+        `Q: ${messages[messages.length - 1]?.content || ''}\nR: ${response}`,
+        { 
+          type: 'conversation', 
+          timestamp: Date.now(),
+          provider: ResilientLLMService.getInstance().getCurrentProvider().name
+        }
       );
 
       this.auditService.log('memory_write', 'Conversation saved to memory');
-
-      if (onComplete) {
-        onComplete(fullResponse);
-      }
-
-      return fullResponse;
     } catch (error) {
-      console.error('Failed to generate response:', error);
-      const errorMessage = 'Désolé, je ne peux pas traiter votre demande en ce moment.';
-      
-      if (onToken) {
-        onToken(errorMessage);
-      }
-      
-      if (onComplete) {
-        onComplete(errorMessage);
-      }
-
-      return errorMessage;
+      console.error('Failed to save conversation memory:', error);
     }
+  }
+
+  private handleGenerationError(
+    error: unknown, 
+    onToken?: (token: string) => void,
+    onComplete?: (fullResponse: string) => void
+  ): string {
+    this.auditService.log('auth_failed', `Response generation failed: ${error}`);
+    
+    const errorMessage = 'Désolé, je ne peux pas traiter votre demande en ce moment. Veuillez réessayer.';
+    
+    if (onToken) {
+      onToken(errorMessage);
+    }
+    
+    if (onComplete) {
+      onComplete(errorMessage);
+    }
+
+    return errorMessage;
   }
 
   async speakText(text: string): Promise<void> {

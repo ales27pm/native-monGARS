@@ -8,6 +8,8 @@ import { MemoryService } from '../services/MemoryService';
 import { AuditService } from '../services/AuditService';
 import { AuditEvent } from '../types/core';
 import { MemoryExplorerScreen } from './MemoryExplorerScreen';
+import { DeveloperSettingsScreen } from './DeveloperSettingsScreen';
+import FeatureFlagService, { FeatureFlags } from '../services/FeatureFlagService';
 
 interface SettingsScreenProps {
   onClose: () => void;
@@ -18,6 +20,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
   const [memoryStats, setMemoryStats] = useState({ totalMemories: 0, totalSize: 0 });
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showMemoryExplorer, setShowMemoryExplorer] = useState(false);
+  const [showDeveloperSettings, setShowDeveloperSettings] = useState(false);
   
   const {
     isDarkMode,
@@ -283,6 +286,23 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
           />
         </View>
 
+        {/* Developer Tools */}
+        {FeatureFlagService.getInstance().isEnabled(FeatureFlags.DEBUG_MODE) && (
+          <View className="mt-6">
+            <Text className="text-lg font-semibold text-purple-600 px-4 mb-4">
+              Outils développeur
+            </Text>
+            
+            <SettingItem
+              icon="code-slash"
+              title="Developer Settings"
+              subtitle="Feature flags, performance, debugging"
+              rightElement={<Ionicons name="chevron-forward" size={20} color="#9CA3AF" />}
+              onPress={() => setShowDeveloperSettings(true)}
+            />
+          </View>
+        )}
+
         {/* Emergency */}
         <View className="mt-6 mb-8">
           <Text className="text-lg font-semibold text-red-600 px-4 mb-4">
@@ -302,6 +322,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onClose }) => {
       {/* Memory Explorer Modal */}
       {showMemoryExplorer && (
         <MemoryExplorerScreen onClose={() => setShowMemoryExplorer(false)} />
+      )}
+
+      {/* Developer Settings Modal */}
+      {showDeveloperSettings && (
+        <DeveloperSettingsScreen onClose={() => setShowDeveloperSettings(false)} />
       )}
 
       {/* Audit Log Modal */}
