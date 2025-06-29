@@ -2,6 +2,9 @@
 
 name: Deploy iOS to TestFlight
 
+# CORRECTED TRIGGER:
+# This workflow will now ONLY run when you manually trigger it from the
+# GitHub Actions UI. This prevents accidental deployments on every push.
 on:
   workflow_dispatch:
     inputs:
@@ -10,7 +13,7 @@ on:
         required: true
         type: string
       buildNumber:
-        description: 'iOS Build Number (e.g., 2)'
+        description: 'iOS Build Number (e.g., 3)'
         required: true
         type: string
 
@@ -37,6 +40,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Download On-Device Model Artifact
+        # This requires the "Build On-Device Core ML Model" workflow to have run successfully before.
         uses: actions/download-artifact@v4
         with:
           name: on-device-models
@@ -52,19 +56,12 @@ jobs:
           fi
 
       - name: Set App Version and Build Number
-        # This is the critical step to automate versioning.
-        # It uses jq to update app.json in place.
         run: |
           echo "Setting app version to ${{ github.event.inputs.version }} and build number to ${{ github.event.inputs.buildNumber }}"
-          # Install jq if not present
           sudo apt-get update && sudo apt-get install -y jq
-          
-          # Update app.json
           jq '.expo.version = "${{ github.event.inputs.version }}" | .expo.ios.buildNumber = "${{ github.event.inputs.buildNumber }}"' app.json > tmp.$$.json && mv tmp.$$.json app.json
-          
           echo "Updated app.json:"
           cat app.json
 
       - name: Build and Submit to TestFlight
-        # EAS Build will now use the updated version from app.json
         run: eas build --platform ios --profile release --non-interactive --auto-submit
