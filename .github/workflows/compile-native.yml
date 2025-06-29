@@ -14,7 +14,7 @@ on:
 
 jobs:
   compile-ios:
-    runs-on: macos-14
+    runs-on: macos-14 # Keeping this on macOS is safer for Xcode tools
     
     defaults:
       run:
@@ -48,13 +48,17 @@ jobs:
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
-      # *** CRITICAL FIX FOR SENTENCEPIECE ***
+      # *** ROBUST FIX FOR MODIFYING PODFILE ***
       - name: Modify Podfile to add SentencePiece source
         run: |
           PODFILE_PATH="ios/Podfile"
-          # This command inserts the required 'source' line at the top of the Podfile
-          sed -i '' "1s/^/source 'https://github.com/google/sentencepiece.git'\\\n/" "$PODFILE_PATH"
-          sed -i '' "1s/^/source 'https:\/\/github.com\/CocoaPods\/Specs.git'\\\n/" "$PODFILE_PATH"
+          # This is a more robust way to prepend text to a file
+          # It creates a temporary file with the new content and then replaces the original
+          {
+            echo "source 'https://github.com/google/sentencepiece.git'"
+            echo "source 'https://github.com/CocoaPods/Specs.git'"
+            cat "$PODFILE_PATH"
+          } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
           
           echo "--- Modified Podfile ---"
           cat "$PODFILE_PATH"
@@ -72,13 +76,13 @@ jobs:
         working-directory: ./native-monGARS/ios
 
       - name: Run Pod Install
-        run: pod install
+        run: pod install --repo-update
         working-directory: ./native-monGARS/ios
       
       - name: Verify Pod Installation
         run: |
           if [ ! -d "ios/Pods/SentencePiece" ]; then
-            echo "::error::'pod install' failed. SentencePiece was not installed."
+            echo "::error::'pod install' failed. SentencePiece pod was not found."
             exit 1
           fi
           echo "✅ Pods installed successfully."
