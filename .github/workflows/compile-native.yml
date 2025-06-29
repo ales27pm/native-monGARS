@@ -30,14 +30,30 @@ jobs:
           node-version: 18.x
           cache: 'npm'
           cache-dependency-path: native-monGARS/package-lock.json
-      
-      # *** CRITICAL NEW STEP ***
-      - name: Apply Patches
-        run: npx patch-package
-        
-      - name: Install JavaScript dependencies
-        # Use --force to handle any potential peer dependency issues from the complex graph
-        run: npm install --force
+
+      # *** NEW ROBUST INSTALLATION STRATEGY ***
+      - name: Clean Install Dependencies
+        run: |
+          echo "Clearing npm cache and removing existing node_modules/lockfile..."
+          npm cache clean --force
+          rm -rf node_modules package-lock.json
+
+          echo "Applying patches before installing..."
+          # patch-package needs to run before install to prepare the ground
+          npx patch-package
+          
+          echo "Running npm install. This may take a while..."
+          # Using --legacy-peer-deps is often more successful than --force for complex projects
+          npm install --legacy-peer-deps
+
+      - name: Verify Critical Dependencies
+        run: |
+          echo "Verifying that 'react-native' is installed..."
+          if [ ! -f "node_modules/react-native/package.json" ]; then
+            echo "::error::'react-native' package was not found after install. Dependency resolution failed."
+            exit 1
+          fi
+          echo "✅ Critical dependencies are present."
 
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
