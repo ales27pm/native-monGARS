@@ -1,0 +1,70 @@
+# .github/workflows/compile-native.yml
+
+name: Compile Native iOS Project (Turbo Modules)
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  # Also run it on every push to main to continuously validate native code
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'native-monGARS/ios/**'
+      - 'native-monGARS/modules/**'
+      - 'native-monGARS/package.json'
+      - 'native-monGARS/app.json'
+
+jobs:
+  compile-ios:
+    runs-on: macos-14 # Must run on macOS to use Xcode and CocoaPods
+    
+    defaults:
+      run:
+        # Run all commands from inside the project directory
+        working-directory: ./native-monGARS
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: native-monGARS/package-lock.json
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Generate native iOS project
+        # This is the key step that creates the ./ios directory and links modules
+        # The --no-install flag prevents it from running pod install automatically
+        run: npx expo prebuild --platform ios --no-install --clean
+
+      - name: Set up Ruby and Bundler for CocoaPods
+        # Best practice for managing pods on CI
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2' # Use a recent Ruby version
+          bundler-cache: true
+          working-directory: ./native-monGARS/ios # Run bundle install in the ios directory
+
+      - name: Install CocoaPods
+        # This will install pods based on the Gemfile.lock in the ios directory
+        run: bundle install
+        working-directory: ./native-monGARS/ios
+
+      - name: Run Pod Install
+        run: pod install
+        working-directory: ./native-monGARS/ios
+      
+      - name: Compile Xcode Project
+        # This command attempts to build the .xcworkspace.
+        # It will fail if there are any Swift/Objective-C syntax errors
+        # or linking issues with your Turbo Modules.
+        run: |
+          xcodebuild build -workspace ios/nativemonGARS.xcworkspace \
+            -scheme nativemonGARS \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
