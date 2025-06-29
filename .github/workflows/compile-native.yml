@@ -1,14 +1,25 @@
 # .github/workflows/compile-native.yml
 
-name: Compile Native iOS Project (Turbo Modules)
+name: Compile Native iOS Project
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'native-monGARS/**'
+      - 'modules/**'
 
 jobs:
   compile-ios:
     runs-on: macos-14
     
+    # This is the master fix. All subsequent 'run' commands in this job
+    # will execute from within the 'native-monGARS' subdirectory.
+    defaults:
+      run:
+        working-directory: ./native-monGARS
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,14 +28,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18.x
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ./node_modules
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          # The cache path is relative to the working directory
+          cache: 'npm'
+          cache-dependency-path: native-monGARS/package-lock.json
 
       - name: Install Dependencies & Apply Patches
+        # This will now run inside './native-monGARS' and find all necessary files
         run: |
           npx patch-package
           npm ci
@@ -32,7 +41,7 @@ jobs:
       - name: Generate native iOS project
         run: npx expo prebuild --platform ios --no-install --clean
 
-      - name: Modify Podfile
+      - name: Modify Podfile to add Third-Party Sources
         run: |
           PODFILE_PATH="ios/Podfile"
           {
@@ -41,28 +50,20 @@ jobs:
             cat "$PODFILE_PATH"
           } > "$PODFILE_PATH.tmp" && mv "$PODFILE_PATH.tmp" "$PODFILE_PATH"
 
-      # *** NEW, CONSOLIDATED, AND FORCEFUL NATIVE DEPENDENCY STEP ***
-      - name: Install and Run CocoaPods
-        run: |
-          echo "Navigating to iOS directory..."
-          cd ios
-          
-          echo "Current directory: $(pwd)"
-          echo "Listing files to confirm Gemfile exists:"
-          ls -l
-          
-          echo "Setting up Ruby environment..."
-          # Manually setup ruby environment for the current shell session
-          echo "/opt/homebrew/opt/ruby/bin" >> $GITHUB_PATH
-          gem install bundler
-          
-          echo "Installing gems using Bundler..."
-          bundle install
-          
-          echo "Installing Pods with repo update..."
-          bundle exec pod install --repo-update
+      - name: Set up Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          # This action's working directory must be relative to the repo root
+          working-directory: native-monGARS/ios
 
+      - name: Run Pod Install
+        working-directory: ./ios # This is now relative to the job's working-directory
+        run: pod install --repo-update
+      
       - name: Compile Xcode Project
+        # The workspace and scheme are now relative to the job's working directory
         run: |
           xcodebuild build -workspace ios/nativemongars.xcworkspace \
             -scheme nativemongars \
