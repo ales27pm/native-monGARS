@@ -4,6 +4,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SimpleNavigator } from "./src/navigation/SimpleNavigator";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { initializeTurboModules } from "./src/services/TurboModuleRegistry";
 import useAppStore from "./src/state/appStore";
 import "./global.css";
 
@@ -36,6 +38,14 @@ export default function App() {
       console.log('🚀 monGARS app starting...');
       
       try {
+        // Initialize TurboModules on startup
+        const turboModulesSuccess = await initializeTurboModules();
+        if (turboModulesSuccess) {
+          console.log('✅ TurboModules initialized successfully');
+        } else {
+          console.warn('⚠️ TurboModules initialization failed - running in compatibility mode');
+        }
+
         // Check service availability
         await checkAllServices();
         
@@ -49,16 +59,22 @@ export default function App() {
     };
 
     initializeApp();
+    
+    return () => {
+      console.log('monGARS app stopped');
+    };
   }, [checkAllServices, setInitialized]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <NavigationContainer>
-          <SimpleNavigator />
-          <StatusBar style="auto" />
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <SimpleNavigator />
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

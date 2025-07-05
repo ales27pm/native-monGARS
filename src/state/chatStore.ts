@@ -38,6 +38,7 @@ interface ChatState {
   // Actions
   setCurrentConversation: (conversation: Conversation | null) => void;
   addMessage: (message: Message) => void;
+  updateLastMessage: (updates: Partial<Message>) => void;
   addConversation: (conversation: Conversation) => void;
   deleteConversation: (id: string) => void;
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
@@ -76,6 +77,31 @@ const useChatStore = create<ChatState>()(
         const updatedConversation = {
           ...currentConversation,
           messages: [...currentConversation.messages, message],
+          updatedAt: new Date(),
+        };
+        
+        set((state) => ({
+          currentConversation: updatedConversation,
+          conversations: state.conversations.map(conv => 
+            conv.id === currentConversation.id ? updatedConversation : conv
+          ),
+        }));
+      },
+
+      updateLastMessage: (updates) => {
+        const { currentConversation } = get();
+        if (!currentConversation || currentConversation.messages.length === 0) return;
+        
+        const lastMessageIndex = currentConversation.messages.length - 1;
+        const updatedMessages = [...currentConversation.messages];
+        updatedMessages[lastMessageIndex] = { 
+          ...updatedMessages[lastMessageIndex], 
+          ...updates 
+        };
+        
+        const updatedConversation = {
+          ...currentConversation,
+          messages: updatedMessages,
           updatedAt: new Date(),
         };
         

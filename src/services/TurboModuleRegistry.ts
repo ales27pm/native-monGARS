@@ -1,49 +1,108 @@
 /**
  * TurboModule Registry for monGARS Native Modules
- * Simplified registry for the New Architecture implementation
+ * Production-ready registry for the New Architecture implementation
  */
 
-// Mock implementations for development - will be replaced with actual TurboModules in production
-const mockModule = {
-  // Mock any method calls to prevent crashes during development
-} as any;
+import { TurboModuleRegistry } from 'react-native';
+import type {
+  AIProcessorSpec,
+  VoiceProcessorSpec,
+  PrivacyModuleSpec,
+  LocalLLMSpec,
+  LocalEmbeddingSpec,
+  ReActToolsSpec
+} from '../../turbo-modules/src';
 
-// Core TurboModules - Safely handled with fallbacks
-export const AIProcessorModule = mockModule;
-export const VoiceProcessorModule = mockModule;
-export const PrivacyModule = mockModule;
-export const LocalLLMModule = mockModule;
-export const LocalEmbeddingModule = mockModule;
-export const ReActToolsModule = mockModule;
+// Core TurboModules - Modern React Native New Architecture
+let AIProcessorModule: AIProcessorSpec | null = null;
+let VoiceProcessorModule: VoiceProcessorSpec | null = null;
+let PrivacyModule: PrivacyModuleSpec | null = null;
+let LocalLLMModule: LocalLLMSpec | null = null;
+let LocalEmbeddingModule: LocalEmbeddingSpec | null = null;
+let ReActToolsModule: ReActToolsSpec | null = null;
+
+// Safe module loading with fallbacks
+const safeGetModule = <T>(moduleName: string): T | null => {
+  try {
+    return TurboModuleRegistry.getEnforcing<T>(moduleName);
+  } catch (error) {
+    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error);
+    return null;
+  }
+};
+
+// Initialize modules
+try {
+  AIProcessorModule = safeGetModule<AIProcessorSpec>('AIProcessorModule');
+  VoiceProcessorModule = safeGetModule<VoiceProcessorSpec>('VoiceProcessorModule');
+  PrivacyModule = safeGetModule<PrivacyModuleSpec>('PrivacyModule');
+  LocalLLMModule = safeGetModule<LocalLLMSpec>('LocalLLMModule');
+  LocalEmbeddingModule = safeGetModule<LocalEmbeddingSpec>('LocalEmbeddingModule');
+  ReActToolsModule = safeGetModule<ReActToolsSpec>('ReActToolsModule');
+} catch (error) {
+  console.error('❌ Failed to load TurboModules:', error);
+}
 
 // Utility function to check TurboModule availability
 export const checkTurboModuleAvailability = () => {
   const modules = {
-    AIProcessorModule: false, // Disabled for now
-    VoiceProcessorModule: false,
-    PrivacyModule: false,
-    LocalLLMModule: false,
-    LocalEmbeddingModule: false,
-    ReActToolsModule: false,
+    AIProcessorModule: !!AIProcessorModule,
+    VoiceProcessorModule: !!VoiceProcessorModule,
+    PrivacyModule: !!PrivacyModule,
+    LocalLLMModule: !!LocalLLMModule,
+    LocalEmbeddingModule: !!LocalEmbeddingModule,
+    ReActToolsModule: !!ReActToolsModule,
   };
   
-  console.log('📱 TurboModule Availability (Development Mode):', modules);
+  console.log('📱 TurboModule Availability:', modules);
   return modules;
 };
 
-// Simplified initialization for New Architecture
+// Production initialization for New Architecture
 export const initializeTurboModules = async () => {
   try {
-    console.log('🚀 TurboModules running in development mode...');
+    console.log('🚀 Initializing TurboModules with New Architecture...');
     
-    // In development, we'll use mock implementations
-    console.log('⚠️ Using mock TurboModules for development');
+    // Check availability
+    const availability = checkTurboModuleAvailability();
+    
+    // Initialize Local LLM if available
+    if (LocalLLMModule) {
+      try {
+        await LocalLLMModule.loadModel('Llama-3.2-3B-Instruct');
+        console.log('✅ Local LLM loaded successfully');
+      } catch (error) {
+        console.warn('⚠️ Local LLM not available:', error);
+      }
+    }
+    
+    // Initialize other modules
+    if (AIProcessorModule) {
+      try {
+        await AIProcessorModule.clearContext();
+        console.log('✅ AI Processor initialized');
+      } catch (error) {
+        console.warn('⚠️ AI Processor initialization failed:', error);
+      }
+    }
+    
+    const availableCount = Object.values(availability).filter(Boolean).length;
+    console.log(`✅ ${availableCount}/6 TurboModules available`);
     
     return true;
   } catch (error) {
     console.error('❌ TurboModule initialization failed:', error);
     return false;
   }
+};
+
+export {
+  AIProcessorModule,
+  VoiceProcessorModule,
+  PrivacyModule,
+  LocalLLMModule,
+  LocalEmbeddingModule,
+  ReActToolsModule,
 };
 
 export default {

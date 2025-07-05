@@ -4,8 +4,21 @@
  * Integrates Llama 3.2 3B Core ML with local embeddings and tool execution
  */
 
-import { LocalLLM, LocalEmbedding, VectorStore, ReActTools } from './TurboModuleRegistry';
-import { logger } from '../utils/logger';
+import { LocalLLMModule, LocalEmbeddingModule, ReActToolsModule } from './TurboModuleRegistry';
+import { NativeEventEmitter } from 'react-native';
+
+interface StreamEvent {
+  sessionId: string;
+  token: string;
+  index?: number;
+  total?: number;
+}
+
+interface CompleteEvent {
+  sessionId: string;
+  reason: 'stop' | 'cancelled' | 'error';
+  totalTokens?: number;
+}
 
 export interface LocalLLMOptions {
   modelName?: string;
@@ -56,6 +69,7 @@ class LocalLLMService {
   private currentStateId: string | null = null;
   private ragEnabled = false;
   private toolsEnabled = false;
+  private eventEmitter: NativeEventEmitter | null = null;
   
   // Available tools
   private availableTools = {
@@ -80,39 +94,40 @@ class LocalLLMService {
    */
   async initialize(options: LocalLLMOptions = {}): Promise<boolean> {
     try {
-      logger.info('LocalLLM', '🧠 Initializing Local LLM Service...');
+      console.log('🧠 Initializing Local LLM Service...');
+
+      if (!LocalLLMModule) {
+        console.warn('LocalLLMModule not available, using fallback');
+        return false;
+      }
+
+      // Set up event emitter for streaming
+      this.eventEmitter = new NativeEventEmitter(LocalLLMModule);
 
       // Load Core ML models
       const modelName = options.modelName || 'Llama-3.2-3B-Instruct';
-      const embeddingModel = options.embeddingModel || 'all-MiniLM-L6-v2';
 
       // Load main LLM model
-      logger.info('LocalLLM', `📥 Loading model: ${modelName}`);
-      const modelLoaded = await LocalLLM.loadModel(modelName);
+      console.log(`📥 Loading model: ${modelName}`);
+      const modelLoaded = await LocalLLMModule.loadModel(modelName);
       
       if (!modelLoaded) {
         throw new Error(`Failed to load model: ${modelName}`);
       }
-
-      // Configure model settings
-      await LocalLLM.setComputeUnits('all');
-      await LocalLLM.setMaxSequenceLength(512);
       
       this.isModelLoaded = true;
 
       // Load embedding model for RAG
-      if (options.useRAG !== false) {
-        logger.info('LocalLLM', `📥 Loading embedding model: ${embeddingModel}`);
-        const embeddingLoaded = await LocalEmbedding.loadEmbeddingModel(embeddingModel);
-        
-        if (embeddingLoaded) {
-          // Initialize vector store
-          const dimensions = await LocalEmbedding.getEmbeddingDimensions();
-          await VectorStore.initialize(dimensions, 'HNSW');
-          this.ragEnabled = true;
-          logger.info('LocalLLM', '✅ RAG pipeline initialized');
-        } else {
-          logger.warn('LocalLLM', '⚠️ Embedding model failed to load, RAG disabled');
+      if (options.useRAG !== false && LocalEmbeddingModule) {
+        console.log(`📥 Loading embedding model...`);
+        try {
+          const embeddingLoaded = await LocalEmbeddingModule.loadEmbeddingModel('all-MiniLM-L6-v2');
+          if (embeddingLoaded) {
+            this.ragEnabled = true;
+            console.log('✅ RAG pipeline initialized');
+          }
+        } catch (error) {
+          console.warn('⚠️ Embedding model failed to load, RAG disabled');
         }
       }
 
@@ -120,11 +135,11 @@ class LocalLLMService {
       this.toolsEnabled = options.useTools !== false;
 
       this.isInitialized = true;
-      logger.info('LocalLLM', '✅ Local LLM Service initialized successfully');
+      console.log('✅ Local LLM Service initialized successfully');
       
       return true;
     } catch (error) {
-      logger.error('LocalLLM', '❌ Failed to initialize Local LLM Service:', error);
+      console.error('❌ Failed to initialize Local LLM Service:', error);
       return false;
     }
   }
@@ -226,9 +241,84 @@ class LocalLLMService {
       };
 
     } catch (error) {
-      logger.error('LocalLLM', '❌ Chat generation failed:', error);
+      console.error('❌ Chat generation failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Start streaming chat generation
+   */
+  async chatStream(prompt: string, options: LocalLLMOptions = {}): Promise<string> {
+    if (!this.isInitialized || !this.isModelLoaded || !LocalLLMModule) {
+      throw new Error('Local LLM service not initialized');
+    }
+
+    try {
+      console.log('🚀 Starting streaming generation...');
+      
+      const sessionId = await LocalLLMModule.generateStream(prompt, {
+        maxTokens: options.maxTokens || 512,
+        temperature: options.temperature || 0.7,
+      });
+      
+      return sessionId;
+    } catch (error) {
+      console.error('❌ Stream generation failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel ongoing generation
+   */
+  async cancelGeneration(sessionId: string): Promise<boolean> {
+    if (!LocalLLMModule) {
+      return false;
+    }
+
+    try {
+      return await LocalLLMModule.cancelGeneration(sessionId);
+    } catch (error) {
+      console.error('❌ Cancel generation failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Listen for streaming tokens
+   */
+  onToken(callback: (event: StreamEvent) => void): () => void {
+    if (!this.eventEmitter) {
+      return () => {};
+    }
+
+    const subscription = this.eventEmitter.addListener('Token', callback);
+    return () => subscription.remove();
+  }
+
+  /**
+   * Listen for completion events
+   */
+  onComplete(callback: (event: CompleteEvent) => void): () => void {
+    if (!this.eventEmitter) {
+      return () => {};
+    }
+
+    const subscription = this.eventEmitter.addListener('Complete', callback);
+    return () => subscription.remove();
+  }
+
+  /**
+   * Listen for error events
+   */
+  onError(callback: (error: any) => void): () => void {
+    if (!this.eventEmitter) {
+      return () => {};
+    }
+
+    const subscription = this.eventEmitter.addListener('Error', callback);
+    return () => subscription.remove();
   }
 
   /**
