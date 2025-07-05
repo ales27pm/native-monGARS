@@ -4,9 +4,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SimpleNavigator } from "./src/navigation/SimpleNavigator";
-import { ErrorBoundary } from "./src/components/ErrorBoundary";
-import { logger } from "./src/utils/logger";
-import { initializeTurboModules } from "./src/services/TurboModuleRegistry";
 import useAppStore from "./src/state/appStore";
 import "./global.css";
 
@@ -36,43 +33,32 @@ export default function App() {
 
   useEffect(() => {
     const initializeApp = async () => {
-      logger.info('App', 'monGARS app starting...');
+      console.log('🚀 monGARS app starting...');
       
-      // Initialize TurboModules on startup
-      const success = await initializeTurboModules();
-      if (success) {
-        logger.info('TurboModules', '✅ TurboModules initialized successfully');
-      } else {
-        logger.warn('TurboModules', '⚠️ TurboModules initialization failed - running in compatibility mode');
+      try {
+        // Check service availability
+        await checkAllServices();
+        
+        // Mark app as initialized
+        setInitialized(true);
+        
+        console.log('✅ monGARS app initialized successfully');
+      } catch (error) {
+        console.error('❌ App initialization error:', error);
       }
-
-      // Check service availability
-      await checkAllServices();
-
-      // Mark app as initialized
-      setInitialized(true);
-      logger.info('App', '✅ monGARS app initialized successfully');
     };
 
-    initializeApp().catch(error => {
-      logger.error('App', 'Unhandled initialization error', error);
-    });
-    
-    return () => {
-      logger.info('App', 'monGARS app stopped');
-    };
+    initializeApp();
   }, [checkAllServices, setInitialized]);
 
   return (
-    <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <NavigationContainer>
-            <SimpleNavigator />
-            <StatusBar style="auto" />
-          </NavigationContainer>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <SimpleNavigator />
+          <StatusBar style="auto" />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

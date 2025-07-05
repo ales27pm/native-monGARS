@@ -32,8 +32,7 @@ class Logger {
   }
 
   private constructor() {
-    // Initialize logger
-    this.info('Logger', 'Logger initialized');
+    // Initialize logger silently
   }
 
   private shouldLog(level: LogLevel): boolean {
