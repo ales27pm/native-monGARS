@@ -3,7 +3,7 @@
  * Production-ready registry for the New Architecture implementation
  */
 
-import { TurboModuleRegistry } from 'react-native';
+import { TurboModuleRegistry, Platform } from 'react-native';
 import type {
   AIProcessorSpec,
   VoiceProcessorSpec,
@@ -24,9 +24,14 @@ let ReActToolsModule: ReActToolsSpec | null = null;
 // Safe module loading with fallbacks
 const safeGetModule = <T>(moduleName: string): T | null => {
   try {
-    return TurboModuleRegistry.getEnforcing<T>(moduleName);
+    if (Platform.OS === 'ios') {
+      return TurboModuleRegistry.getEnforcing<T>(moduleName);
+    } else {
+      console.warn(`⚠️ TurboModule ${moduleName} only available on iOS`);
+      return null;
+    }
   } catch (error) {
-    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error);
+    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error.message);
     return null;
   }
 };
@@ -69,10 +74,10 @@ export const initializeTurboModules = async () => {
     // Initialize Local LLM if available
     if (LocalLLMModule) {
       try {
-        await LocalLLMModule.loadModel('Llama-3.2-3B-Instruct');
-        console.log('✅ Local LLM loaded successfully');
+        // Don't auto-load models - let user choose via the interface
+        console.log('✅ Local LLM module available');
       } catch (error) {
-        console.warn('⚠️ Local LLM not available:', error);
+        console.warn('⚠️ Local LLM initialization failed:', error);
       }
     }
     

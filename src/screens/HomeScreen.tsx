@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import useAppStore from '../state/appStore';
 import { cn } from '../utils/cn';
+import ModelDownloadManager from '../components/ModelDownloadManager';
 
 interface StatusCardProps {
   title: string;
@@ -81,6 +82,7 @@ export default function HomeScreen() {
     getServiceCount, 
     checkAllServices
   } = useAppStore();
+  const [showModelManager, setShowModelManager] = useState(false);
 
   useEffect(() => {
     console.log('Home screen mounted');
@@ -119,6 +121,10 @@ export default function HomeScreen() {
   };
 
   const activeServicesCount = getServiceCount();
+
+  if (showModelManager) {
+    return <ModelDownloadManager />;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -188,6 +194,14 @@ export default function HomeScreen() {
           {/* Quick Actions */}
           <View className="mb-6">
             <Text className="text-lg font-bold text-gray-900 mb-4">Quick Actions</Text>
+            
+            <QuickActionCard
+              title="Core ML Models"
+              description="Download and manage on-device AI models"
+              icon="hardware-chip"
+              color="bg-green-500"
+              onPress={() => setShowModelManager(true)}
+            />
             
             <QuickActionCard
               title="Start Chat"

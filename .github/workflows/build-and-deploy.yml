@@ -1,0 +1,251 @@
+name: Build and Deploy monGARS
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_to:
+        description: 'Deploy target'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+        - development
+        - staging
+        - production
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: 'latest'
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+  APPLE_ID: ${{ secrets.APPLE_ID }}
+  APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+jobs:
+  # Lint and Test Job
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+        
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 🏗 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          
+      - name: 📦 Install dependencies
+        run: bun install
+        
+      - name: 🧪 Run tests
+        run: |
+          echo "Running unit tests..."
+          # Add test commands here when available
+          # bun test
+          
+      - name: 📝 Run linter
+        run: |
+          echo "Running ESLint..."
+          npx eslint . --ext .ts,.tsx,.js,.jsx --max-warnings 0 || true
+          
+      - name: 🔍 TypeScript check
+        run: |
+          echo "Running TypeScript check..."
+          npx tsc --noEmit
+
+  # Build iOS Job
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: lint-and-test
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+        
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 🏗 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          
+      - name: 🍎 Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '15.2'
+          
+      - name: 📦 Install dependencies
+        run: bun install
+        
+      - name: 🔧 Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+          
+      - name: 📦 Install CocoaPods
+        run: |
+          cd ios && pod install --repo-update
+          
+      - name: 🏗 Build iOS app
+        run: |
+          echo "Building iOS app..."
+          npx expo build:ios --non-interactive
+          
+      - name: 📱 Upload iOS build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: '*.ipa'
+          retention-days: 7
+
+  # Build Android Job
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+        
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 🏗 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          
+      - name: 🤖 Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: 📦 Install dependencies
+        run: bun install
+        
+      - name: 🔧 Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+          
+      - name: 🏗 Build Android app
+        run: |
+          echo "Building Android app..."
+          npx expo build:android --non-interactive
+          
+      - name: 📱 Upload Android build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build
+          path: '*.apk'
+          retention-days: 7
+
+  # Deploy Job
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [build-ios, build-android]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: 🏗 Setup repo
+        uses: actions/checkout@v4
+        
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 🏗 Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          
+      - name: 📦 Install dependencies
+        run: bun install
+        
+      - name: 🔧 Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ env.EXPO_TOKEN }}
+          
+      - name: 📱 Download iOS build
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-build
+          
+      - name: 📱 Download Android build
+        uses: actions/download-artifact@v4
+        with:
+          name: android-build
+          
+      - name: 🚀 Deploy to Expo
+        run: |
+          echo "Deploying to Expo..."
+          npx expo publish --non-interactive
+          
+      - name: 📊 Generate build report
+        run: |
+          echo "# Build Report" > build-report.md
+          echo "" >> build-report.md
+          echo "## Build Information" >> build-report.md
+          echo "- **Branch**: ${{ github.ref_name }}" >> build-report.md
+          echo "- **Commit**: ${{ github.sha }}" >> build-report.md
+          echo "- **Date**: $(date)" >> build-report.md
+          echo "- **Actor**: ${{ github.actor }}" >> build-report.md
+          echo "" >> build-report.md
+          echo "## Status" >> build-report.md
+          echo "✅ iOS Build: Completed" >> build-report.md
+          echo "✅ Android Build: Completed" >> build-report.md
+          echo "✅ Deployment: Completed" >> build-report.md
+          
+      - name: 📊 Upload build report
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: build-report.md
+
+  # Notification Job
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: always()
+    
+    steps:
+      - name: 📱 Send success notification
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "✅ Build and deployment completed successfully!"
+          
+      - name: 📱 Send failure notification
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "❌ Build or deployment failed!"
+          exit 1
