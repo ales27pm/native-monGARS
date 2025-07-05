@@ -578,7 +578,7 @@ function ToolsScreen({ onBack }: { onBack: () => void }) {
 }
 
 // Settings Screen Component
-function SettingsScreen({ onBack }: { onBack: () => void }) {
+function SettingsScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate: (screen: string) => void }) {
   const [activeModel, setActiveModel] = useState<string>("Loading...");
   const [storageInfo, setStorageInfo] = useState<string>("Loading...");
 
@@ -631,7 +631,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
             }}
             onPress={() => {
               if (setting.action === 'models') {
-                setCurrentScreen('models');
+                onNavigate('models');
               } else {
                 Alert.alert(setting.name, `Current setting: ${setting.value}\n\nIn a full implementation, you could modify this setting here.`);
               }
@@ -684,7 +684,7 @@ export default function App() {
   }
   
   if (currentScreen === 'settings') {
-    return <SettingsScreen onBack={() => setCurrentScreen('home')} />;
+    return <SettingsScreen onBack={() => setCurrentScreen('home')} onNavigate={setCurrentScreen} />;
   }
   
   if (currentScreen === 'models') {
