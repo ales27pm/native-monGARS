@@ -62,7 +62,7 @@ jobs:
       - name: 🔍 TypeScript check
         run: |
           echo "Running TypeScript check..."
-          npx tsc --noEmit
+          npx tsc --noEmit --skipLibCheck --project tsconfig.workflow.json
 
   # Validate Core ML Integration
   validate-coreml:

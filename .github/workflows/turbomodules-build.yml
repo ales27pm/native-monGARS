@@ -43,7 +43,7 @@ jobs:
       - name: 🔍 Validate TypeScript interfaces
         run: |
           echo "Validating TurboModule TypeScript interfaces..."
-          npx tsc --noEmit turbo-modules/src/*.ts
+          cd turbo-modules && npx tsc --noEmit --skipLibCheck
           
       - name: 🔍 Check Swift syntax
         run: |

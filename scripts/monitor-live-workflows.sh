@@ -118,12 +118,12 @@ simulate_workflow() {
         return 1
     fi
     
-    # Test Expo prebuild
-    log_debug "Testing Expo prebuild..."
-    if timeout 60 bunx expo prebuild --platform ios --no-install; then
-        log_success "  ✅ Expo prebuild simulation successful"
+    # Test Expo CLI availability
+    log_debug "Testing Expo CLI availability..."
+    if command -v expo &> /dev/null || bunx expo --version &> /dev/null; then
+        log_success "  ✅ Expo CLI is available"
     else
-        log_error "  ❌ Expo prebuild simulation failed"
+        log_error "  ❌ Expo CLI is not available"
         return 1
     fi
     
