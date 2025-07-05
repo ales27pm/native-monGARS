@@ -1,90 +1,55 @@
 /**
  * TurboModule Registry for monGARS Native Modules
- * Provides typed access to all native iOS functionality
+ * Simplified registry for the New Architecture implementation
  */
 
 import { TurboModuleRegistry } from 'react-native';
 import type {
-  WakeWordDetectionSpec,
-  VectorStoreSpec,
-  SpeechSynthesisSpec,
-  FileManagerSpec,
+  AIProcessorSpec,
+  VoiceProcessorSpec,
+  PrivacyModuleSpec,
   LocalLLMSpec,
   LocalEmbeddingSpec,
   ReActToolsSpec
-} from '../types/NativeModules';
+} from '../../turbo-modules/src';
 
-// TurboModule Registry - Modern React Native 0.76+ approach
-export const WakeWordDetection = TurboModuleRegistry.getEnforcing<WakeWordDetectionSpec>('WakeWordDetection');
-export const VectorStore = TurboModuleRegistry.getEnforcing<VectorStoreSpec>('VectorStore');
-export const SpeechSynthesis = TurboModuleRegistry.getEnforcing<SpeechSynthesisSpec>('SpeechSynthesis');
-export const FileManager = TurboModuleRegistry.getEnforcing<FileManagerSpec>('FileManager');
-
-// Local LLM and RAG Modules
-export const LocalLLM = TurboModuleRegistry.getEnforcing<LocalLLMSpec>('LocalLLM');
-export const LocalEmbedding = TurboModuleRegistry.getEnforcing<LocalEmbeddingSpec>('LocalEmbedding');
-
-// ReAct Tools
-export const ReActTools = TurboModuleRegistry.getEnforcing<ReActToolsSpec>('ReActTools');
+// Core TurboModules - Modern React Native New Architecture
+export const AIProcessorModule = TurboModuleRegistry.getEnforcing<AIProcessorSpec>('AIProcessorModule');
+export const VoiceProcessorModule = TurboModuleRegistry.getEnforcing<VoiceProcessorSpec>('VoiceProcessorModule');
+export const PrivacyModule = TurboModuleRegistry.getEnforcing<PrivacyModuleSpec>('PrivacyModule');
+export const LocalLLMModule = TurboModuleRegistry.getEnforcing<LocalLLMSpec>('LocalLLMModule');
+export const LocalEmbeddingModule = TurboModuleRegistry.getEnforcing<LocalEmbeddingSpec>('LocalEmbeddingModule');
+export const ReActToolsModule = TurboModuleRegistry.getEnforcing<ReActToolsSpec>('ReActToolsModule');
 
 // Utility function to check TurboModule availability
 export const checkTurboModuleAvailability = () => {
   const modules = {
-    WakeWordDetection: !!WakeWordDetection,
-    VectorStore: !!VectorStore,
-    SpeechSynthesis: !!SpeechSynthesis,
-    FileManager: !!FileManager,
-    LocalLLM: !!LocalLLM,
-    LocalEmbedding: !!LocalEmbedding,
-    ReActTools: !!ReActTools,
+    AIProcessorModule: !!AIProcessorModule,
+    VoiceProcessorModule: !!VoiceProcessorModule,
+    PrivacyModule: !!PrivacyModule,
+    LocalLLMModule: !!LocalLLMModule,
+    LocalEmbeddingModule: !!LocalEmbeddingModule,
+    ReActToolsModule: !!ReActToolsModule,
   };
   
   console.log('📱 TurboModule Availability:', modules);
   return modules;
 };
 
-// Initialize all TurboModules
+// Simplified initialization for New Architecture
 export const initializeTurboModules = async () => {
   try {
-    console.log('🚀 Initializing TurboModules...');
+    console.log('🚀 Initializing TurboModules with New Architecture...');
     
     // Check availability
     const availability = checkTurboModuleAvailability();
     
-    // Initialize Vector Store
-    if (availability.VectorStore) {
-      await VectorStore.initialize(1536, 'HNSW'); // OpenAI embedding dimensions
-      console.log('✅ VectorStore initialized');
-    }
+    // All modules are automatically available with the New Architecture
+    // No manual initialization required - handled by the native implementations
     
-    // Set up Wake Word Detection
-    if (availability.WakeWordDetection) {
-      await WakeWordDetection.setSensitivity(0.8);
-      await WakeWordDetection.setWakeWords(['hey mongars', 'mongars']);
-      console.log('✅ WakeWordDetection configured');
-    }
+    const availableCount = Object.values(availability).filter(Boolean).length;
+    console.log(`✅ ${availableCount}/6 TurboModules initialized successfully!`);
     
-    // Configure Speech Synthesis
-    if (availability.SpeechSynthesis) {
-      await SpeechSynthesis.setDefaultVoice('com.apple.voice.enhanced.en-US.Alex');
-      await SpeechSynthesis.setSpeechRate(0.5);
-      console.log('✅ SpeechSynthesis configured');
-    }
-    
-    // Initialize Local LLM modules
-    if (availability.LocalLLM) {
-      console.log('✅ LocalLLM module available');
-    }
-    
-    if (availability.LocalEmbedding) {
-      console.log('✅ LocalEmbedding module available');
-    }
-    
-    if (availability.ReActTools) {
-      console.log('✅ ReActTools module available');
-    }
-    
-    console.log('🎉 All TurboModules initialized successfully!');
     return true;
   } catch (error) {
     console.error('❌ TurboModule initialization failed:', error);
@@ -93,13 +58,12 @@ export const initializeTurboModules = async () => {
 };
 
 export default {
-  WakeWordDetection,
-  VectorStore,
-  SpeechSynthesis,
-  FileManager,
-  LocalLLM,
-  LocalEmbedding,
-  ReActTools,
+  AIProcessorModule,
+  VoiceProcessorModule,
+  PrivacyModule,
+  LocalLLMModule,
+  LocalEmbeddingModule,
+  ReActToolsModule,
   checkTurboModuleAvailability,
   initializeTurboModules,
 };
