@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AIResponse } from "../types/ai";
 
+export type AIProvider = 'local' | 'anthropic' | 'openai' | 'grok';
+
 export interface Message {
   id: string;
   text: string;
@@ -11,7 +13,7 @@ export interface Message {
   metadata?: {
     tokens?: number;
     processingTime?: number;
-    provider?: 'anthropic' | 'openai' | 'grok';
+    provider?: AIProvider;
     model?: string;
   };
 }
@@ -22,7 +24,7 @@ export interface Conversation {
   messages: Message[];
   createdAt: Date;
   updatedAt: Date;
-  provider: 'anthropic' | 'openai' | 'grok';
+  provider: AIProvider;
 }
 
 interface ChatState {
@@ -31,7 +33,7 @@ interface ChatState {
   conversations: Conversation[];
   isLoading: boolean;
   error: string | null;
-  selectedProvider: 'anthropic' | 'openai' | 'grok';
+  selectedProvider: AIProvider;
   
   // Actions
   setCurrentConversation: (conversation: Conversation | null) => void;
@@ -41,7 +43,7 @@ interface ChatState {
   updateConversation: (id: string, updates: Partial<Conversation>) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  setSelectedProvider: (provider: 'anthropic' | 'openai' | 'grok') => void;
+  setSelectedProvider: (provider: AIProvider) => void;
   clearError: () => void;
   
   // Computed
@@ -61,7 +63,7 @@ const useChatStore = create<ChatState>()(
       conversations: [],
       isLoading: false,
       error: null,
-      selectedProvider: 'anthropic',
+      selectedProvider: 'local',
       
       // Actions
       setCurrentConversation: (conversation) => 

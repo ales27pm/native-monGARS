@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,149 +7,45 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getAnthropicChatResponse, getOpenAIChatResponse, getGrokChatResponse } from '../api/chat-service';
-import { localLLMService } from '../services/LocalLLMService';
-
-interface Message {
-  id: string;
-  text: string;
-  isUser: boolean;
-  timestamp: Date;
-}
-
-type AIProvider = 'local' | 'anthropic' | 'openai' | 'grok';
+import useChat from '../hooks/useChat';
+import type { Message, AIProvider } from '../state/chatStore';
+import { cn } from '../utils/cn';
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: "Hello! I'm monGARS, your privacy-first AI assistant. I can help you with questions, analysis, and tasks. What would you like to discuss?",
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ]);
+  const {
+    messages,
+    isLoading: isProcessing,
+    sendMessage,
+    selectedProvider,
+    setProvider,
+    isLocalLLMInitialized,
+    createNewConversation,
+  } = useChat();
+
   const [inputText, setInputText] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<AIProvider>('local');
-  const [isLocalLLMInitialized, setIsLocalLLMInitialized] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Initialize Local LLM
-  useEffect(() => {
-    const initializeLocalLLM = async () => {
-      try {
-        const success = await localLLMService.initialize({
-          modelName: 'Llama-3.2-3B-Instruct',
-          useRAG: true,
-          useTools: true,
-          systemPrompt: 'You are monGARS, a helpful AI assistant running locally on iOS. Be concise and helpful.',
-        });
-        
-        if (success) {
-          setIsLocalLLMInitialized(true);
-          // Add sample documents for RAG
-          await localLLMService.addDocuments([
-            {
-              id: 'doc1',
-              text: 'monGARS is an advanced AI assistant with local LLM capabilities. It can process natural language requests and execute actions using on-device intelligence.',
-              metadata: { source: 'about' }
-            },
-            {
-              id: 'doc2',
-              text: 'The app supports calendar management, contact operations, and file handling through native iOS integrations. All processing happens locally for privacy.',
-              metadata: { source: 'features' }
-            }
-          ]);
-        }
-      } catch (error) {
-        console.error('Local LLM initialization failed:', error);
-      }
-    };
-
-    initializeLocalLLM();
-  }, []);
-
-  const sendMessage = async () => {
-    if (!inputText.trim() || isProcessing) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      isUser: true,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputText('');
-    setIsProcessing(true);
-
-    try {
-      let response;
-      
-      switch (selectedProvider) {
-        case 'local':
-          if (!isLocalLLMInitialized) {
-            throw new Error('Local LLM is not initialized');
-          }
-          const chatHistory = messages.filter(m => m.id !== '1').map(m => ({
-            role: (m.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
-            content: m.text,
-          }));
-          const localResponse = await localLLMService.chat([
-            ...chatHistory,
-            { role: 'user' as const, content: userMessage.text }
-          ]);
-          response = { content: localResponse.text };
-          break;
-        case 'anthropic':
-          response = await getAnthropicChatResponse(userMessage.text);
-          break;
-        case 'openai':
-          response = await getOpenAIChatResponse(userMessage.text);
-          break;
-        case 'grok':
-          response = await getGrokChatResponse(userMessage.text);
-          break;
-        default:
-          response = await getAnthropicChatResponse(userMessage.text);
-      }
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: response.content,
-        isUser: false,
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "I apologize, but I'm having trouble connecting to the AI service right now. Please try again in a moment.",
-        isUser: false,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsProcessing(false);
+  const handleSendMessage = () => {
+    if (inputText.trim()) {
+      sendMessage(inputText);
+      setInputText('');
     }
   };
 
   const clearMessages = () => {
-    setMessages([
-      {
-        id: '1',
-        text: "Hello! I'm monGARS, your privacy-first AI assistant. I can help you with questions, analysis, and tasks. What would you like to discuss?",
-        isUser: false,
-        timestamp: new Date(),
-      },
-    ]);
+    Alert.alert(
+      "New Chat",
+      "Would you like to start a new conversation?",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start New', onPress: () => createNewConversation() }
+      ]
+    );
   };
 
   const MessageBubble = ({ message }: { message: Message }) => (
@@ -170,7 +66,7 @@ export default function ChatScreen() {
         </Text>
       </View>
       <Text className="text-xs text-gray-500 mt-1 px-2">
-        {message.timestamp.toLocaleTimeString([], {
+        {new Date(message.timestamp).toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
         })}
@@ -183,10 +79,13 @@ export default function ChatScreen() {
       {(['local', 'anthropic', 'openai', 'grok'] as AIProvider[]).map((provider) => (
         <Pressable
           key={provider}
-          onPress={() => setSelectedProvider(provider)}
-          className={`flex-1 px-3 py-2 rounded-xl mx-1 ${
-            selectedProvider === provider ? 'bg-white shadow-sm' : ''
-          }`}
+          onPress={() => setProvider(provider)}
+          disabled={provider === 'local' && !isLocalLLMInitialized}
+          className={cn(
+            'flex-1 px-3 py-2 rounded-xl mx-1',
+            selectedProvider === provider ? 'bg-white shadow-sm' : '',
+            provider === 'local' && !isLocalLLMInitialized ? 'opacity-50' : ''
+          )}
         >
           <Text
             className={`text-center text-sm font-medium capitalize ${
@@ -196,7 +95,7 @@ export default function ChatScreen() {
             {provider === 'local' ? (
               <>
                 🧠 Local
-                {!isLocalLLMInitialized && <Text className="text-xs text-red-500"> (Init...)</Text>}
+                {!isLocalLLMInitialized && <Text className="text-xs text-red-500"> (Off)</Text>}
               </>
             ) : (
               provider
@@ -207,11 +106,21 @@ export default function ChatScreen() {
     </View>
   );
 
+  const initialMessage = {
+    id: '1',
+    text: "Hello! I'm monGARS, your privacy-first AI assistant. I can help you with questions, analysis, and tasks. What would you like to discuss?",
+    isUser: false,
+    timestamp: new Date(),
+  };
+
+  const displayMessages = messages.length > 0 ? messages : [initialMessage];
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {/* Header */}
         <View className="bg-white border-b border-gray-200 px-4 py-3">
@@ -228,7 +137,7 @@ export default function ChatScreen() {
               </View>
             </View>
             <Pressable onPress={clearMessages} className="p-2">
-              <Ionicons name="refresh" size={20} color="#6B7280" />
+              <Ionicons name="add" size={24} color="#6B7280" />
             </Pressable>
           </View>
         </View>
@@ -247,7 +156,7 @@ export default function ChatScreen() {
             scrollViewRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {messages.map(message => (
+          {displayMessages.map(message => (
             <MessageBubble key={message.id} message={message} />
           ))}
           
@@ -273,12 +182,12 @@ export default function ChatScreen() {
                 style={{ maxHeight: 100 }}
                 className="text-base text-gray-900"
                 editable={!isProcessing}
-                onSubmitEditing={sendMessage}
+                onSubmitEditing={handleSendMessage}
                 blurOnSubmit={false}
               />
             </View>
             <Pressable
-              onPress={sendMessage}
+              onPress={handleSendMessage}
               disabled={!inputText.trim() || isProcessing}
               className={`w-12 h-12 rounded-full items-center justify-center ${
                 inputText.trim() && !isProcessing

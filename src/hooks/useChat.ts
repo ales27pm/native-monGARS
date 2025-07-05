@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import useChatStore, { Message, Conversation } from '../state/chatStore';
-import { getAnthropicChatResponse, getOpenAIChatResponse, getGrokChatResponse } from '../api/chat-service';
+import useChatStore, { Message, Conversation, AIProvider } from '../state/chatStore';
+import { getAnthropicTextResponse, getOpenAITextResponse, getGrokTextResponse } from '../api/chat-service';
 import { logger } from '../utils/logger';
+import { localLLMService } from '../services/LocalLLMService';
+import { AIMessage } from '../types/ai';
 
 interface UseChatOptions {
   autoSave?: boolean;
@@ -17,7 +19,8 @@ interface UseChatReturn {
   error: string | null;
   currentConversation: Conversation | null;
   conversations: Conversation[];
-  selectedProvider: 'anthropic' | 'openai' | 'grok';
+  selectedProvider: AIProvider;
+  isLocalLLMInitialized: boolean;
   
   // Actions
   sendMessage: (text: string) => Promise<void>;
@@ -25,7 +28,7 @@ interface UseChatReturn {
   selectConversation: (conversation: Conversation) => void;
   deleteConversation: (id: string) => void;
   clearError: () => void;
-  setProvider: (provider: 'anthropic' | 'openai' | 'grok') => void;
+  setProvider: (provider: AIProvider) => void;
   retryLastMessage: () => Promise<void>;
   
   // Utilities
@@ -42,6 +45,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
   const [retryCount, setRetryCount] = useState(0);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [isLocalLLMInitialized, setIsLocalLLMInitialized] = useState(false);
 
   const {
     currentConversation,
@@ -65,34 +69,62 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   // Initialize with a default conversation if none exists
   useEffect(() => {
     if (!currentConversation && conversations.length === 0) {
-      const newConversation = createConv();
+      const newConversation = createConv('New Conversation');
       addConversation(newConversation);
       setCurrentConversation(newConversation);
       logger.info('useChat', 'Initialized with default conversation');
     }
-  }, [currentConversation, conversations.length]);
+  }, [currentConversation, conversations.length, createConv, addConversation, setCurrentConversation]);
 
-  const getAIResponse = useCallback(async (text: string, provider: 'anthropic' | 'openai' | 'grok') => {
+  useEffect(() => {
+    const initLocalLLM = async () => {
+      try {
+        const success = await localLLMService.initialize();
+        setIsLocalLLMInitialized(success);
+        if (success) {
+          logger.info('useChat', 'Local LLM initialized successfully');
+        } else {
+          logger.warn('useChat', 'Local LLM initialization failed');
+        }
+      } catch (e) {
+        logger.error('useChat', 'Local LLM init error', e);
+        setIsLocalLLMInitialized(false);
+      }
+    };
+    initLocalLLM();
+  }, []);
+
+  const getAIResponse = useCallback(async (history: Message[], provider: AIProvider) => {
     const startTime = Date.now();
-    logger.apiRequest('useChat', 'POST', `AI/${provider}`, { text });
+    logger.apiRequest('useChat', 'POST', `AI/${provider}`);
+
+    const apiMessages = history.map(msg => ({
+      role: (msg.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: msg.text,
+    }));
 
     try {
       let response;
       
       switch (provider) {
+        case 'local':
+          if (!isLocalLLMInitialized) throw new Error("Local LLM not initialized.");
+          const localResponse = await localLLMService.chat(apiMessages as any);
+          response = { content: localResponse.text, usage: localResponse.usage };
+          break;
         case 'anthropic':
-          response = await getAnthropicChatResponse(text);
+          response = await getAnthropicTextResponse(apiMessages);
           break;
         case 'openai':
-          response = await getOpenAIChatResponse(text);
+          response = await getOpenAITextResponse(apiMessages as AIMessage[]);
           break;
         case 'grok':
-          response = await getGrokChatResponse(text);
+          response = await getGrokTextResponse(apiMessages as AIMessage[]);
           break;
         default:
           throw new Error(`Unsupported provider: ${provider}`);
       }
-
+      
       const duration = Date.now() - startTime;
       logger.apiResponse('useChat', 'POST', `AI/${provider}`, 200, duration);
       
@@ -102,29 +134,26 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       logger.apiResponse('useChat', 'POST', `AI/${provider}`, 500, duration);
       throw error;
     }
-  }, []);
+  }, [isLocalLLMInitialized]);
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || isLoading) return;
 
-    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const timestamp = new Date();
-
-    // Ensure we have a current conversation
     let conversation = currentConversation;
     if (!conversation) {
-      conversation = createConv(generateConversationTitle(text));
+      conversation = createConv(generateConversationTitle(text.trim()));
       addConversation(conversation);
       setCurrentConversation(conversation);
     }
-
-    // Add user message
+    
     const userMessage: Message = {
-      id: messageId,
+      id: `msg_${Date.now()}`,
       text: text.trim(),
       isUser: true,
-      timestamp,
+      timestamp: new Date(),
     };
+
+    const messageHistory = [...(conversation?.messages || []), userMessage];
 
     addMessage(userMessage);
     setLoading(true);
@@ -132,19 +161,18 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     setLastFailedMessage(null);
 
     try {
-      logger.info('useChat', 'Sending message', { text, provider: selectedProvider });
+      logger.info('useChat', 'Sending message', { provider: selectedProvider });
       
-      const response = await getAIResponse(text, selectedProvider);
+      const response = await getAIResponse(messageHistory, selectedProvider);
       
-      // Add AI response
       const aiMessage: Message = {
-        id: `${messageId}_response`,
+        id: `${userMessage.id}_response`,
         text: response.content,
         isUser: false,
         timestamp: new Date(),
         metadata: {
           tokens: response.usage?.totalTokens,
-          processingTime: Date.now() - timestamp.getTime(),
+          processingTime: Date.now() - userMessage.timestamp.getTime(),
           provider: selectedProvider,
         },
       };
@@ -165,20 +193,16 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(`Failed to get AI response: ${errorMessage}`);
       
-      // Add error message to conversation
-      const errorMessageObj: Message = {
-        id: `${messageId}_error`,
+      const errorMsgObj: Message = {
+        id: `${userMessage.id}_error`,
         text: "I apologize, but I'm having trouble processing your message right now. Please try again.",
         isUser: false,
         timestamp: new Date(),
-        metadata: {
-          provider: selectedProvider,
-        },
+        metadata: { provider: selectedProvider },
       };
 
-      addMessage(errorMessageObj);
+      addMessage(errorMsgObj);
       
-      // Show alert for user feedback
       Alert.alert(
         'Message Failed',
         `Unable to send message using ${selectedProvider}. Would you like to try again?`,
@@ -190,7 +214,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     } finally {
       setLoading(false);
     }
-  }, [isLoading, currentConversation, selectedProvider, getAIResponse]);
+  }, [isLoading, currentConversation, selectedProvider, getAIResponse, addMessage, addConversation, createConv, generateConversationTitle, setCurrentConversation, setError, setLoading]);
 
   const retryLastMessage = useCallback(async () => {
     if (!lastFailedMessage || retryCount >= maxRetries) {
@@ -204,7 +228,6 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     
     setRetryCount(prev => prev + 1);
     
-    // Add delay between retries
     if (retryCount > 0) {
       await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount));
     }
@@ -229,7 +252,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     logger.info('useChat', 'Deleted conversation', { id });
   }, [deleteConv]);
 
-  const setProvider = useCallback((provider: 'anthropic' | 'openai' | 'grok') => {
+  const setProvider = useCallback((provider: AIProvider) => {
     setSelectedProvider(provider);
     logger.info('useChat', 'Changed AI provider', { provider });
   }, [setSelectedProvider]);
@@ -269,6 +292,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     currentConversation,
     conversations,
     selectedProvider,
+    isLocalLLMInitialized,
     
     // Actions
     sendMessage,
