@@ -5,11 +5,7 @@
     "skipLibCheck": true,
     "types": [
       "react-native"
-    ],
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "jsx": "react-native"
+    ]
   },
   "include": [
     "**/*.ts",
@@ -20,6 +16,7 @@
   "exclude": [
     "node_modules",
     "**/*.test.ts",
-    "**/*.test.tsx"
+    "**/*.test.tsx",
+    "generate-asset-script.ts"
   ]
 }

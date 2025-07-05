@@ -79,6 +79,7 @@ export interface LocalLLMSpec extends TurboModule {
   }>;
   
   stopStream(sessionId: string): Promise<boolean>;
+  cancelGeneration(sessionId: string): Promise<boolean>;
   
   // Context Management
   setSystemPrompt(prompt: string, stateId?: string): Promise<boolean>;
@@ -114,6 +115,10 @@ export interface LocalLLMSpec extends TurboModule {
     numThreads: number;
     useGPU: boolean;
   }>;
+
+  // Event Emitter methods
+  addListener(eventName: string): void;
+  removeListeners(count: number): void;
 }
 
 export default TurboModuleRegistry.getEnforcing<LocalLLMSpec>('LocalLLMModule');

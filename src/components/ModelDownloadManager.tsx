@@ -166,9 +166,10 @@ export default function ModelDownloadManager() {
                 if (result?.downloadStarted) {
                   Alert.alert('Download Started', `${model.displayName} download has begun.`);
                 }
-              } catch (error) {
+              } catch (e) {
+                const error = e as Error;
                 console.error('Download failed:', error);
-                Alert.alert('Download Failed', `Failed to start download: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                Alert.alert('Download Failed', `Failed to start download: ${error.message}`);
               }
             },
           },
@@ -183,7 +184,7 @@ export default function ModelDownloadManager() {
   const cancelDownload = async (modelName: string) => {
     try {
       if (LocalLLMModule) {
-        const cancelled = await LocalLLMModule.cancelDownload(modelName);
+        const cancelled = await LocalLLMModule?.cancelDownload(modelName);
         if (cancelled) {
           Alert.alert('Download Cancelled', 'Model download has been cancelled.');
           setDownloadProgress(prev => {
@@ -228,7 +229,7 @@ export default function ModelDownloadManager() {
   const loadModel = async (modelName: string) => {
     try {
       if (LocalLLMModule) {
-        const success = await LocalLLMModule.loadModel(modelName);
+        const success = await LocalLLMModule?.loadModel(modelName);
         if (success) {
           Alert.alert('Model Loaded', 'Model is now ready for inference.');
           await loadDownloadedModels();

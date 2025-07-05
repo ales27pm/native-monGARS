@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { AIProvider } from './chatStore';
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
-  preferredAIProvider: 'anthropic' | 'openai' | 'grok' | 'local';
+  preferredAIProvider: AIProvider;
   temperature: number;
   maxTokens: number;
   voiceEnabled: boolean;

@@ -262,12 +262,13 @@ export class ContactsService {
     }
 
     try {
-      await Contacts.updateContactAsync({
-        id: contactId,
-        name: updates.name || 'Unknown',
-        ...updates,
-        contactType: Contacts.ContactTypes.Person,
-      });
+      await Contacts.updateContactAsync(
+        {
+          id: contactId,
+          name: updates.name || 'Unknown',
+          contactType: Contacts.ContactTypes.Person,
+          ...updates
+        });
     } catch (error) {
       console.error('Error updating contact:', error);
       throw error;

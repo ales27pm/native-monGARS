@@ -9,10 +9,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import useAppStore from '../state/appStore';
-import type { AppSettings } from '../state/appStore';
-
-type AIProvider = 'anthropic' | 'openai' | 'grok' | 'local';
+import useAppStore, { type AppSettings } from '../state/appStore';
+import type { AIProvider } from '../state/chatStore';
 import { cn } from '../utils/cn';
 
 interface SettingItemProps {

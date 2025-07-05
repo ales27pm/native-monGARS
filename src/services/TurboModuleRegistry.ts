@@ -3,7 +3,7 @@
  * Production-ready registry for the New Architecture implementation
  */
 
-import { TurboModuleRegistry, Platform } from 'react-native';
+import { TurboModuleRegistry, Platform, type TurboModule } from 'react-native';
 import type {
   AIProcessorSpec,
   VoiceProcessorSpec,
@@ -22,7 +22,7 @@ let LocalEmbeddingModule: LocalEmbeddingSpec | null = null;
 let ReActToolsModule: ReActToolsSpec | null = null;
 
 // Safe module loading with fallbacks
-const safeGetModule = <T = any>(moduleName: string): T | null => {
+const safeGetModule = <T extends TurboModule>(moduleName: string): T | null => {
   try {
     if (Platform.OS === 'ios') {
       return TurboModuleRegistry.getEnforcing(moduleName) as T;
@@ -30,8 +30,9 @@ const safeGetModule = <T = any>(moduleName: string): T | null => {
       console.warn(`⚠️ TurboModule ${moduleName} only available on iOS`);
       return null;
     }
-  } catch (error) {
-    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error instanceof Error ? error.message : 'Unknown error');
+  } catch (e) {
+    const error = e as Error;
+    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error.message);
     return null;
   }
 };
