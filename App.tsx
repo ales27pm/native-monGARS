@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StatusBar } from "expo-status-bar";
+import { View, Text, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -31,39 +32,61 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 */
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
   const { checkAllServices, setInitialized } = useAppStore();
 
   useEffect(() => {
     const initializeApp = async () => {
-      console.log('🚀 monGARS app starting...');
-      
       try {
-        // Initialize TurboModules on startup
-        const turboModulesSuccess = await initializeTurboModules();
-        if (turboModulesSuccess) {
-          console.log('✅ TurboModules initialized successfully');
-        } else {
-          console.warn('⚠️ TurboModules initialization failed - running in compatibility mode');
-        }
-
-        // Check service availability
-        await checkAllServices();
+        console.log('🚀 monGARS app starting...');
         
-        // Mark app as initialized
+        // Skip TurboModule initialization for now to avoid hanging
+        // Just check services and mark as initialized
+        await checkAllServices();
         setInitialized(true);
         
         console.log('✅ monGARS app initialized successfully');
       } catch (error) {
         console.error('❌ App initialization error:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    initializeApp();
-    
-    return () => {
-      console.log('monGARS app stopped');
-    };
+    // Add a small delay to ensure everything is ready
+    setTimeout(initializeApp, 1000);
   }, [checkAllServices, setInitialized]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaProvider>
+        <View style={{ 
+          flex: 1, 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          backgroundColor: '#f8f9fa'
+        }}>
+          <Text style={{ 
+            fontSize: 24, 
+            fontWeight: 'bold', 
+            color: '#007AFF',
+            marginBottom: 20
+          }}>
+            🧠 monGARS
+          </Text>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={{ 
+            fontSize: 16, 
+            color: '#666',
+            marginTop: 16,
+            textAlign: 'center'
+          }}>
+            Loading AI Assistant...
+          </Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <ErrorBoundary>
