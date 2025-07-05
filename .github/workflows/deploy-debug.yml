@@ -1,0 +1,174 @@
+name: 🔧 Debug Complete Workflow
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  debug:
+    name: 🔧 Debug Complete Workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔍 Complete project validation
+        run: |
+          echo "✅ Validating complete project structure..."
+          
+          # Check if key files exist
+          if [ -f "App.tsx" ]; then
+            echo "✅ App.tsx exists"
+          else
+            echo "❌ App.tsx missing"
+            exit 1
+          fi
+          
+          if [ -f "package.json" ]; then
+            echo "✅ package.json exists"
+          else
+            echo "❌ package.json missing"
+            exit 1
+          fi
+          
+          if [ -d "src" ]; then
+            echo "✅ src directory exists"
+          else
+            echo "❌ src directory missing"
+            exit 1
+          fi
+          
+          # Check key directories
+          if [ -d "src/screens" ]; then
+            echo "✅ src/screens directory exists"
+          else
+            echo "❌ src/screens directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/services" ]; then
+            echo "✅ src/services directory exists"
+          else
+            echo "❌ src/services directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/hooks" ]; then
+            echo "✅ src/hooks directory exists"
+          else
+            echo "❌ src/hooks directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/navigation" ]; then
+            echo "✅ src/navigation directory exists"
+          else
+            echo "❌ src/navigation directory missing"
+            exit 1
+          fi
+          
+          # Check for additional directories
+          if [ -d "src/api" ]; then
+            echo "✅ src/api directory exists"
+          else
+            echo "❌ src/api directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/state" ]; then
+            echo "✅ src/state directory exists"
+          else
+            echo "❌ src/state directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/utils" ]; then
+            echo "✅ src/utils directory exists"
+          else
+            echo "❌ src/utils directory missing"
+            exit 1
+          fi
+          
+          if [ -d "src/types" ]; then
+            echo "✅ src/types directory exists"
+          else
+            echo "❌ src/types directory missing"
+            exit 1
+          fi
+          
+          echo "🎉 Complete project validation passed!"
+      
+      - name: 🔍 Service architecture validation
+        run: |
+          echo "🔍 Checking service architecture..."
+          
+          # Check for specific service files
+          services=("llm" "rag" "agent" "audio" "tools")
+          for service in "${services[@]}"; do
+            if [ -d "src/services/$service" ]; then
+              echo "✅ $service service directory exists"
+            else
+              echo "❌ $service service directory missing"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Service architecture validation passed!"
+      
+      - name: 🔍 File count validation
+        run: |
+          echo "🔍 Checking file counts..."
+          
+          # Check TypeScript files
+          ts_count=$(find src -name "*.ts" -o -name "*.tsx" 2>/dev/null | wc -l)
+          echo "📋 TypeScript files: $ts_count"
+          if [ "$ts_count" -ge 10 ]; then
+            echo "✅ TypeScript files count OK"
+          else
+            echo "❌ Expected at least 10 TypeScript files, found $ts_count"
+            exit 1
+          fi
+          
+          # Check screen files
+          screen_count=$(find src/screens -name "*.tsx" -o -name "*.ts" 2>/dev/null | wc -l)
+          echo "📋 Screen files: $screen_count"
+          if [ "$screen_count" -ge 5 ]; then
+            echo "✅ Screen files count OK"
+          else
+            echo "❌ Expected at least 5 screen files, found $screen_count"
+            exit 1
+          fi
+          
+          # Check service files
+          service_count=$(find src/services -name "*.ts" -o -name "*.tsx" 2>/dev/null | wc -l)
+          echo "📋 Service files: $service_count"
+          if [ "$service_count" -ge 5 ]; then
+            echo "✅ Service files count OK"
+          else
+            echo "❌ Expected at least 5 service files, found $service_count"
+            exit 1
+          fi
+          
+          echo "✅ File count validation passed!"
+      
+      - name: 🎉 Debug success
+        run: |
+          echo "## 🎉 Debug Workflow Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ All validations passed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project Structure**: All 8 directories validated" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service Architecture**: All 5 service directories validated" >> $GITHUB_STEP_SUMMARY
+          echo "- **File Counts**: TypeScript, Screen, and Service files validated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🎯 **Ready for full workflow deployment!**" >> $GITHUB_STEP_SUMMARY
+          
+          echo "✅ DEBUG WORKFLOW SUCCESS!"

@@ -1,0 +1,55 @@
+{
+  "name": "@mongars/turbo-modules",
+  "version": "1.0.0",
+  "description": "Native Turbo Modules for monGARS AI Assistant",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc",
+    "clean": "rm -rf lib"
+  },
+  "keywords": [
+    "react-native",
+    "turbo-modules",
+    "ai",
+    "privacy",
+    "voice",
+    "mongars"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ales27pm/native-monGARS.git"
+  },
+  "author": "monGARS Team",
+  "license": "MIT",
+  "react-native": {
+    "AIProcessorModule": "src/AIProcessorModule",
+    "VoiceProcessorModule": "src/VoiceProcessorModule", 
+    "PrivacyModule": "src/PrivacyModule"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@react-native-community/bob": "^0.17.1",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "typescript": "~5.8.3"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      [
+        "typescript",
+        {
+          "project": "tsconfig.json"
+        }
+      ]
+    ]
+  }
+}
