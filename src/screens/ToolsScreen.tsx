@@ -415,7 +415,7 @@ export default function ToolsScreen() {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 7); // Next 7 days
 
-      const events = await CalendarService.getEvents(startDate, endDate);
+      const events = await CalendarService.getInstance().getEvents(startDate, endDate);
       
       if (events.length === 0) {
         addResult('No upcoming events found in the next 7 days');
@@ -424,7 +424,7 @@ export default function ToolsScreen() {
         const eventSummary = `Found ${events.length} upcoming events`;
         addResult(eventSummary);
         
-        const eventList = events.slice(0, 5).map(event => 
+        const eventList = events.slice(0, 5).map((event: any) => 
           `• ${event.title} (${event.startDate.toLocaleDateString()})`
         ).join('\n');
         
@@ -448,7 +448,7 @@ export default function ToolsScreen() {
           setLoadingToolId('contacts-search');
           
           try {
-            const contacts = await ContactsService.searchContacts(searchText.trim());
+            const contacts = await ContactsService.getInstance().searchContacts(searchText.trim());
             
             if (contacts.length === 0) {
               addResult(`No contacts found for "${searchText}"`);
@@ -457,7 +457,7 @@ export default function ToolsScreen() {
               const resultText = `Found ${contacts.length} contact(s) for "${searchText}"`;
               addResult(resultText);
               
-              const contactList = contacts.slice(0, 5).map(contact => 
+              const contactList = contacts.slice(0, 5).map((contact: any) => 
                 `• ${contact.firstName} ${contact.lastName}`
               ).join('\n');
               
@@ -510,7 +510,7 @@ export default function ToolsScreen() {
     setLoadingToolId('create-event');
 
     try {
-      const success = await CalendarService.createEvent(eventData);
+      const success = await CalendarService.getInstance().createEvent(eventData);
       
       if (success) {
         addResult(`✅ Created event: ${eventData.title}`);
@@ -533,7 +533,7 @@ export default function ToolsScreen() {
     setLoadingToolId('create-contact');
 
     try {
-      const success = await ContactsService.createContact(contactData);
+      const success = await ContactsService.getInstance().createContact(contactData);
       
       if (success) {
         const name = `${contactData.firstName} ${contactData.lastName}`.trim();

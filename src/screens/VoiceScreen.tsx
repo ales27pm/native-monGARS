@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import useVoice from '../hooks/useVoice';
+import { useVoice } from '../hooks/useVoice';
 import type { VoiceRecording } from '../services/VoiceService';
 import { cn } from '../utils/cn';
 

@@ -76,7 +76,7 @@ export class ContactsService {
       });
 
       return data.map(contact => ({
-        id: contact.id,
+        id: contact.id || Math.random().toString(),
         name: contact.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
         firstName: contact.firstName,
         lastName: contact.lastName,
@@ -162,26 +162,24 @@ export class ContactsService {
     }
 
     try {
-      const contact = await Contacts.getContactByIdAsync(contactId, {
-        fields: [
-          Contacts.Fields.Name,
-          Contacts.Fields.FirstName,
-          Contacts.Fields.LastName,
-          Contacts.Fields.PhoneNumbers,
-          Contacts.Fields.Emails,
-          Contacts.Fields.Addresses,
-          Contacts.Fields.Company,
-          Contacts.Fields.JobTitle,
-          Contacts.Fields.ImageAvailable,
-        ],
-      });
+      const contact = await Contacts.getContactByIdAsync(contactId, [
+        Contacts.Fields.Name,
+        Contacts.Fields.FirstName,
+        Contacts.Fields.LastName,
+        Contacts.Fields.PhoneNumbers,
+        Contacts.Fields.Emails,
+        Contacts.Fields.Addresses,
+        Contacts.Fields.Company,
+        Contacts.Fields.JobTitle,
+        Contacts.Fields.ImageAvailable,
+      ]);
 
       if (!contact) {
         return null;
       }
 
       return {
-        id: contact.id,
+        id: contact.id || Math.random().toString(),
         name: contact.name || `${contact.firstName || ''} ${contact.lastName || ''}`.trim(),
         firstName: contact.firstName,
         lastName: contact.lastName,
@@ -245,6 +243,7 @@ export class ContactsService {
         })),
         company: contactData.company,
         jobTitle: contactData.jobTitle,
+        contactType: Contacts.ContactTypes.Person,
       });
 
       return contactId;
@@ -263,7 +262,12 @@ export class ContactsService {
     }
 
     try {
-      await Contacts.updateContactAsync(contactId, updates);
+      await Contacts.updateContactAsync({
+        id: contactId,
+        name: updates.name || 'Unknown',
+        ...updates,
+        contactType: Contacts.ContactTypes.Person,
+      });
     } catch (error) {
       console.error('Error updating contact:', error);
       throw error;

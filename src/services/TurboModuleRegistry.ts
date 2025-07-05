@@ -22,16 +22,16 @@ let LocalEmbeddingModule: LocalEmbeddingSpec | null = null;
 let ReActToolsModule: ReActToolsSpec | null = null;
 
 // Safe module loading with fallbacks
-const safeGetModule = <T>(moduleName: string): T | null => {
+const safeGetModule = <T = any>(moduleName: string): T | null => {
   try {
     if (Platform.OS === 'ios') {
-      return TurboModuleRegistry.getEnforcing<T>(moduleName);
+      return TurboModuleRegistry.getEnforcing(moduleName) as T;
     } else {
       console.warn(`⚠️ TurboModule ${moduleName} only available on iOS`);
       return null;
     }
   } catch (error) {
-    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error.message);
+    console.warn(`⚠️ TurboModule ${moduleName} not available:`, error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
 };

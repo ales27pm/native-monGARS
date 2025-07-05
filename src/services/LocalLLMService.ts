@@ -102,7 +102,7 @@ class LocalLLMService {
       }
 
       // Set up event emitter for streaming
-      this.eventEmitter = new NativeEventEmitter(LocalLLMModule);
+      this.eventEmitter = new NativeEventEmitter(LocalLLMModule as any);
 
       // Load Core ML models
       const modelName = options.modelName || 'Llama-3.2-3B-Instruct';
@@ -278,7 +278,7 @@ class LocalLLMService {
     }
 
     try {
-      return await LocalLLMModule.cancelGeneration(sessionId);
+      return await (LocalLLMModule as any).cancelGeneration?.(sessionId) || false;
     } catch (error) {
       console.error('❌ Cancel generation failed:', error);
       return false;
@@ -366,7 +366,7 @@ class LocalLLMService {
       }
 
       const context = results
-        .map(result => result.metadata.text)
+        .map((result: any) => result.metadata.text)
         .join('\n\n');
 
       logger.info('LocalLLM', `📖 RAG context retrieved: ${results.length} documents`);

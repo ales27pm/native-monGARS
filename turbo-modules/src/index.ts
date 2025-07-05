@@ -102,7 +102,6 @@ export const useVoiceProcessor = () => {
     isListening,
     startListening,
     stopListening,
-    ...VoiceProcessorModule,
   };
 };
 
@@ -189,7 +188,7 @@ export const useLocalLLM = () => {
       return result;
     } catch (error) {
       console.error('Failed to download model:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   };
   
@@ -237,7 +236,6 @@ export const useLocalLLM = () => {
     downloadModel,
     deleteModel,
     refreshModels,
-    ...LocalLLMModule,
   };
 };
 
@@ -278,7 +276,6 @@ export const useLocalEmbedding = () => {
     isReady,
     loadedModels,
     loadEmbeddingModel,
-    ...LocalEmbeddingModule,
   };
 };
 
@@ -316,7 +313,7 @@ export const useReActTools = () => {
       return result;
     } catch (error) {
       console.error('Failed to register tool:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   };
   
@@ -324,6 +321,5 @@ export const useReActTools = () => {
     isReady,
     registeredTools,
     registerTool,
-    ...ReActToolsModule,
   };
 };

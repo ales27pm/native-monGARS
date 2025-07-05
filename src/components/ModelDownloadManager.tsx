@@ -162,13 +162,13 @@ export default function ModelDownloadManager() {
             text: 'Download',
             onPress: async () => {
               try {
-                const result = await LocalLLMModule.downloadModel(model.name, model.downloadURL);
-                if (result.downloadStarted) {
+                const result = await LocalLLMModule?.downloadModel(model.name, model.downloadURL);
+                if (result?.downloadStarted) {
                   Alert.alert('Download Started', `${model.displayName} download has begun.`);
                 }
               } catch (error) {
                 console.error('Download failed:', error);
-                Alert.alert('Download Failed', `Failed to start download: ${error.message}`);
+                Alert.alert('Download Failed', `Failed to start download: ${error instanceof Error ? error.message : 'Unknown error'}`);
               }
             },
           },

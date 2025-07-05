@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
-  preferredAIProvider: 'anthropic' | 'openai' | 'grok';
+  preferredAIProvider: 'anthropic' | 'openai' | 'grok' | 'local';
   temperature: number;
   maxTokens: number;
   voiceEnabled: boolean;

@@ -166,6 +166,7 @@ export const useVoice = () => {
   return {
     isListening,
     isProcessing,
+    isLoading: isProcessing, // Alias for compatibility
     transcription,
     error,
     recordings,
@@ -173,11 +174,15 @@ export const useVoice = () => {
     wakeWordEnabled,
     startListening: handleStartListening,
     stopListening: handleStopListening,
+    startRecording: handleStartListening, // Alias for compatibility
+    stopRecording: handleStopListening, // Alias for compatibility
     toggleWakeWord: handleToggleWakeWord,
     playRecording: handlePlayRecording,
     deleteRecording: handleDeleteRecording,
     transcribeRecording: handleTranscribeRecording,
     quickTranscribe: handleQuickTranscribe,
     clearAll: clearAllRecordings,
+    clearError: () => {}, // Placeholder
+    setWakeWordEnabled: setWakeWordEnabled,
   };
 };

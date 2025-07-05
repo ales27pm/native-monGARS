@@ -198,7 +198,7 @@ export class VoicePipelineService {
       
       if (VoicePipelineModule?.startWakeWordDetection) {
         await VoicePipelineModule.startWakeWordDetection({
-          wakeWord: this.config.wakeWord,
+          wakeWord: this.config.wakeWord || 'hey mongars',
           sensitivity: this.config.sensitivity
         });
       } else {
@@ -389,7 +389,7 @@ export class VoicePipelineService {
           detected: true,
           confidence: 0.9 + Math.random() * 0.1,
           timestamp: Date.now(),
-          wakeWord: this.config.wakeWord
+          wakeWord: this.config.wakeWord || 'hey mongars'
         };
         
         this.emit('wakeword', event);
