@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
-import { View, Text, ScrollView, Pressable, Alert, Modal } from "react-native";
+import { View, Text, ScrollView, Pressable, Alert, Modal, TextInput, ActivityIndicator, Image } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import { getAnthropicChatResponse, getOpenAIChatResponse, getGrokChatResponse } from './src/api/chat-service';
+import { transcribeAudio } from './src/api/transcribe-audio';
+import { generateImage } from './src/api/image-generation';
+import { AIMessage } from './src/types/ai';
 
 // Chat Screen Component
 function ChatScreen({ onBack }: { onBack: () => void }) {
@@ -166,35 +172,82 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
 
 // Voice Screen Component
 function VoiceScreen({ onBack }: { onBack: () => void }) {
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [recognizedText, setRecognizedText] = useState("");
   const [showResult, setShowResult] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [aiResponse, setAiResponse] = useState("");
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [permissionResponse, requestPermission] = Audio.usePermissions();
 
-  const startListening = () => {
-    setIsListening(true);
-    setRecognizedText("");
-    setShowResult(false);
-    
-    // Simulate speech recognition process
-    setTimeout(() => {
-      const samplePhrases = [
-        "What's the weather like today?",
-        "Set a reminder for 3 PM",
-        "Call John from my contacts",
-        "Open my calendar for tomorrow",
-        "What's my schedule for today?"
-      ];
-      const randomPhrase = samplePhrases[Math.floor(Math.random() * samplePhrases.length)];
-      setRecognizedText(randomPhrase);
-      setIsListening(false);
-      setShowResult(true);
-    }, 2500);
+  const startRecording = async () => {
+    try {
+      if (permissionResponse?.status !== 'granted') {
+        console.log('Requesting permission..');
+        await requestPermission();
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      console.log('Starting recording..');
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+      setIsRecording(true);
+      setRecognizedText("");
+      setShowResult(false);
+      setAiResponse("");
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
+    }
   };
 
-  const stopListening = () => {
-    setIsListening(false);
+  const stopRecording = async () => {
+    if (!recording) return;
+    
+    console.log('Stopping recording..');
+    setIsRecording(false);
+    setIsProcessing(true);
+    
+    try {
+      await recording.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+      
+      const uri = recording.getURI();
+      if (uri) {
+        console.log('Recording stopped and stored at', uri);
+        
+        // Transcribe the audio
+        const transcribedText = await transcribeAudio(uri);
+        setRecognizedText(transcribedText);
+        setShowResult(true);
+        
+        // Get AI response to the transcribed text
+        const response = await getAnthropicChatResponse(transcribedText);
+        setAiResponse(response.content);
+      }
+    } catch (error) {
+      console.error('Error processing recording:', error);
+      Alert.alert('Error', 'Failed to process your voice. Please try again.');
+    } finally {
+      setRecording(null);
+      setIsProcessing(false);
+    }
+  };
+
+  const resetSession = () => {
+    setIsRecording(false);
     setShowResult(false);
     setRecognizedText("");
+    setAiResponse("");
+    setIsProcessing(false);
   };
 
   return (
@@ -204,54 +257,83 @@ function VoiceScreen({ onBack }: { onBack: () => void }) {
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </Pressable>
         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>Voice Assistant</Text>
+        <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 8, height: 8, backgroundColor: '#22c55e', borderRadius: 4, marginRight: 6 }} />
+          <Text style={{ fontSize: 12, color: '#22c55e', fontWeight: '600' }}>LIVE</Text>
+        </View>
       </View>
       
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
         <View style={{
           width: 120,
           height: 120,
-          backgroundColor: isListening ? '#ef4444' : (showResult ? '#22c55e' : '#6b7280'),
+          backgroundColor: isRecording ? '#ef4444' : (isProcessing ? '#f59e0b' : (showResult ? '#22c55e' : '#6b7280')),
           borderRadius: 60,
           justifyContent: 'center',
           alignItems: 'center',
           marginBottom: 32
         }}>
-          <Ionicons 
-            name={isListening ? "mic" : (showResult ? "checkmark" : "mic-outline")} 
-            size={60} 
-            color="white" 
-          />
+          {isProcessing ? (
+            <ActivityIndicator size="large" color="white" />
+          ) : (
+            <Ionicons 
+              name={isRecording ? "mic" : (showResult ? "checkmark" : "mic-outline")} 
+              size={60} 
+              color="white" 
+            />
+          )}
         </View>
         
-        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 16 }}>
-          {isListening ? "Listening..." : (showResult ? "Voice Recognized!" : "Ready to Listen")}
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 16, textAlign: 'center' }}>
+          {isRecording ? "Recording..." : (isProcessing ? "Processing..." : (showResult ? "Complete!" : "Ready to Record"))}
         </Text>
         
         {showResult && recognizedText ? (
-          <View style={{
-            backgroundColor: 'white',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-            width: '100%',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 3
-          }}>
-            <Text style={{ fontSize: 16, color: '#333', textAlign: 'center', marginBottom: 8 }}>
-              You said:
-            </Text>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#007AFF', textAlign: 'center' }}>
-              "{recognizedText}"
-            </Text>
+          <View style={{ width: '100%', marginBottom: 24 }}>
+            <View style={{
+              backgroundColor: 'white',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3
+            }}>
+              <Text style={{ fontSize: 14, color: '#666', marginBottom: 8, fontWeight: '600' }}>
+                YOU SAID:
+              </Text>
+              <Text style={{ fontSize: 16, color: '#333' }}>
+                {recognizedText}
+              </Text>
+            </View>
+            
+            {aiResponse && (
+              <View style={{
+                backgroundColor: '#dbeafe',
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: '#3b82f6'
+              }}>
+                <Text style={{ fontSize: 14, color: '#1e40af', marginBottom: 8, fontWeight: '600' }}>
+                  AI RESPONSE:
+                </Text>
+                <Text style={{ fontSize: 16, color: '#1e40af' }}>
+                  {aiResponse}
+                </Text>
+              </View>
+            )}
           </View>
         ) : (
           <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 }}>
-            {isListening 
-              ? "Speak now, I'm listening to your command"
-              : "Tap the microphone to start voice interaction"
+            {isRecording 
+              ? "Speak clearly into your device microphone"
+              : isProcessing
+              ? "Transcribing your speech and generating AI response..."
+              : "Tap the microphone to start recording your voice"
             }
           </Text>
         )}
@@ -260,63 +342,116 @@ function VoiceScreen({ onBack }: { onBack: () => void }) {
           <View style={{ width: '100%' }}>
             <Pressable
               style={{
-                backgroundColor: '#007AFF',
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 12,
-                alignItems: 'center'
-              }}
-              onPress={() => {
-                Alert.alert("Processing Command", `AI would now process: "${recognizedText}"\n\nIn a full implementation, this would:\n• Parse your intent\n• Execute the command\n• Provide relevant response`);
-              }}
-            >
-              <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
-                Process Command
-              </Text>
-            </Pressable>
-            
-            <Pressable
-              style={{
                 backgroundColor: '#6b7280',
                 borderRadius: 12,
                 padding: 16,
                 alignItems: 'center'
               }}
-              onPress={stopListening}
+              onPress={resetSession}
             >
               <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
-                Try Again
+                🎤 Record Again
               </Text>
             </Pressable>
           </View>
         ) : (
           <Pressable
             style={{
-              backgroundColor: isListening ? '#ef4444' : '#10b981',
+              backgroundColor: isRecording ? '#ef4444' : '#10b981',
               borderRadius: 12,
               padding: 16,
-              paddingHorizontal: 32
+              paddingHorizontal: 32,
+              opacity: isProcessing ? 0.5 : 1
             }}
-            onPress={isListening ? stopListening : startListening}
+            onPress={isRecording ? stopRecording : startRecording}
+            disabled={isProcessing}
           >
             <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
-              {isListening ? "Stop Listening" : "Start Voice Command"}
+              {isRecording ? "🛑 Stop Recording" : "🎤 Start Recording"}
             </Text>
           </Pressable>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 // Tools Screen Component
 function ToolsScreen({ onBack }: { onBack: () => void }) {
+  const [activeDemo, setActiveDemo] = useState<string | null>(null);
+  const [imageGenResult, setImageGenResult] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  
   const tools = [
-    { name: "Calendar Integration", icon: "calendar-outline", description: "Manage your calendar events" },
-    { name: "Contacts", icon: "people-outline", description: "Search and manage contacts" },
-    { name: "File System", icon: "folder-outline", description: "Access and organize files" },
-    { name: "Core ML Models", icon: "hardware-chip", description: "Download and manage AI models" },
+    { 
+      name: "AI Image Generator", 
+      icon: "image-outline", 
+      description: "Generate images with AI",
+      action: "image-gen"
+    },
+    { 
+      name: "Voice Transcription", 
+      icon: "mic-outline", 
+      description: "Convert speech to text",
+      action: "voice-demo"
+    },
+    { 
+      name: "File Analysis", 
+      icon: "document-text-outline", 
+      description: "AI-powered file analysis",
+      action: "file-demo"
+    },
+    { 
+      name: "Smart Chat", 
+      icon: "chatbubbles-outline", 
+      description: "Multi-provider AI chat",
+      action: "chat-demo"
+    },
   ];
+
+  const generateDemoImage = async () => {
+    setIsGenerating(true);
+    try {
+      const demoPrompts = [
+        "A futuristic city skyline at sunset",
+        "A peaceful mountain lake with reflections",
+        "An abstract digital art piece with vibrant colors",
+        "A cozy coffee shop interior with warm lighting"
+      ];
+      const randomPrompt = demoPrompts[Math.floor(Math.random() * demoPrompts.length)];
+      
+      const imageUrl = await generateImage(randomPrompt, { 
+        size: "1024x1024", 
+        quality: "medium" 
+      });
+      setImageGenResult(imageUrl);
+    } catch (error) {
+      console.error('Demo image generation error:', error);
+      Alert.alert('Error', 'Failed to generate demo image.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleToolPress = (action: string, name: string) => {
+    switch (action) {
+      case 'image-gen':
+        setActiveDemo('image-gen');
+        generateDemoImage();
+        break;
+      case 'voice-demo':
+        Alert.alert("Voice Transcription", "This tool converts your speech to text using OpenAI's Whisper model. Go to the Voice Assistant screen to try it!");
+        break;
+      case 'file-demo':
+        Alert.alert("File Analysis", "This would analyze documents, images, and other files using AI. Features include:\n• Document summarization\n• Image recognition\n• Content extraction\n• Smart categorization");
+        break;
+      case 'chat-demo':
+        Alert.alert("Smart Chat", "Multi-provider AI chat with:\n• Anthropic Claude\n• OpenAI GPT\n• Grok AI\n\nGo to the Chat screen to try real conversations!");
+        break;
+      default:
+        Alert.alert(name, `${name} tool demonstration`);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
@@ -325,6 +460,11 @@ function ToolsScreen({ onBack }: { onBack: () => void }) {
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </Pressable>
         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>Smart Tools</Text>
+        <View style={{ flex: 1 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ width: 8, height: 8, backgroundColor: '#8b5cf6', borderRadius: 4, marginRight: 6 }} />
+          <Text style={{ fontSize: 12, color: '#8b5cf6', fontWeight: '600' }}>ACTIVE</Text>
+        </View>
       </View>
       
       <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -344,7 +484,7 @@ function ToolsScreen({ onBack }: { onBack: () => void }) {
               shadowRadius: 2,
               elevation: 2
             }}
-            onPress={() => Alert.alert(tool.name, `${tool.description}\n\nThis tool would integrate with native iOS capabilities for enhanced functionality.`)}
+            onPress={() => handleToolPress(tool.action, tool.name)}
           >
             <View style={{
               width: 50,
@@ -368,6 +508,55 @@ function ToolsScreen({ onBack }: { onBack: () => void }) {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </Pressable>
         ))}
+        
+        {/* Live Demo Section */}
+        {activeDemo === 'image-gen' && (
+          <View style={{
+            backgroundColor: '#f3f4f6',
+            borderRadius: 12,
+            padding: 16,
+            marginTop: 8,
+            borderWidth: 2,
+            borderColor: '#8b5cf6'
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12 }}>
+              🎨 Live Image Generation Demo
+            </Text>
+            
+            {isGenerating ? (
+              <View style={{ alignItems: 'center', padding: 20 }}>
+                <ActivityIndicator size="large" color="#8b5cf6" />
+                <Text style={{ color: '#666', marginTop: 8 }}>Generating AI image...</Text>
+              </View>
+            ) : imageGenResult ? (
+              <View>
+                <Image 
+                  source={{ uri: imageGenResult }} 
+                  style={{ 
+                    width: '100%', 
+                    height: 200, 
+                    borderRadius: 8, 
+                    marginBottom: 12 
+                  }}
+                  resizeMode="cover"
+                />
+                <Pressable
+                  style={{
+                    backgroundColor: '#8b5cf6',
+                    borderRadius: 8,
+                    padding: 12,
+                    alignItems: 'center'
+                  }}
+                  onPress={generateDemoImage}
+                >
+                  <Text style={{ color: 'white', fontWeight: '600' }}>
+                    🔄 Generate Another
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -505,14 +694,14 @@ export default function App() {
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#0369a1' }}>
-                Services Active
+                AI Services Ready
               </Text>
               <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0284c7' }}>
-                4/4
+                LIVE
               </Text>
             </View>
             <Text style={{ fontSize: 14, color: '#0369a1' }}>
-              All processing happens locally and privately on your device
+              Real AI chat, voice transcription, and image generation active
             </Text>
           </View>
 
@@ -559,7 +748,7 @@ export default function App() {
                     Anthropic Claude
                   </Text>
                   <Text style={{ fontSize: 14, color: '#666' }}>
-                    Ready for advanced reasoning
+                    Live API - Advanced reasoning
                   </Text>
                 </View>
                 <View style={{
@@ -603,7 +792,7 @@ export default function App() {
                     OpenAI GPT
                   </Text>
                   <Text style={{ fontSize: 14, color: '#666' }}>
-                    Creative and analytical AI
+                    Live API - Creative & analytical
                   </Text>
                 </View>
                 <View style={{
@@ -647,7 +836,7 @@ export default function App() {
                     Grok AI
                   </Text>
                   <Text style={{ fontSize: 14, color: '#666' }}>
-                    Real-time AI insights
+                    Live API - Real-time insights
                   </Text>
                 </View>
                 <View style={{
@@ -691,7 +880,7 @@ export default function App() {
                     Voice Assistant
                   </Text>
                   <Text style={{ fontSize: 14, color: '#666' }}>
-                    Speech recognition available
+                    Live transcription + AI response
                   </Text>
                 </View>
                 <View style={{
@@ -756,7 +945,7 @@ export default function App() {
                 shadowRadius: 4,
                 elevation: 3
               }}
-              onPress={() => Alert.alert("Core ML Models", "Model management feature allows you to:\n\n• Download AI models for offline use\n• Manage storage and model versions\n• Enable on-device inference\n\nThis feature uses Apple's Core ML framework for optimal performance.")}
+              onPress={() => Alert.alert("AI Image Generation", "Live image generation using OpenAI's DALL-E:\n\n• Generate custom images from text\n• High-quality 1024x1024 output\n• Multiple style options\n• Instant results\n\nTry it in the Chat or Tools section!")}
             >
               <Ionicons name="hardware-chip" size={24} color="white" />
               <Text style={{
@@ -765,7 +954,7 @@ export default function App() {
                 color: 'white',
                 marginLeft: 12
               }}>
-                Core ML Models
+                AI Image Generation
               </Text>
             </Pressable>
 
@@ -881,28 +1070,28 @@ export default function App() {
 
           {/* Success Message */}
           <View style={{
-            backgroundColor: '#dbeafe',
+            backgroundColor: '#dcfce7',
             borderRadius: 12,
             padding: 16,
             marginTop: 16,
             borderWidth: 1,
-            borderColor: '#3b82f6',
+            borderColor: '#16a34a',
             alignItems: 'center'
           }}>
             <Text style={{
               fontSize: 18,
               fontWeight: 'bold',
-              color: '#1e40af',
+              color: '#15803d',
               marginBottom: 8
             }}>
-              🎉 App Successfully Built!
+              ✅ Real AI Integration Active!
             </Text>
             <Text style={{
               fontSize: 14,
-              color: '#1e40af',
+              color: '#15803d',
               textAlign: 'center'
             }}>
-              All buttons are now functional - tap anywhere to explore!
+              Live API connections to Anthropic, OpenAI, Grok + real voice transcription & image generation
             </Text>
           </View>
         </ScrollView>
