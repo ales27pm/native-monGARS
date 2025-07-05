@@ -8,6 +8,9 @@ import * as FileSystem from 'expo-file-system';
 import { getAnthropicChatResponse, getOpenAIChatResponse, getGrokChatResponse } from './src/api/chat-service';
 import { transcribeAudio } from './src/api/transcribe-audio';
 import { generateImage } from './src/api/image-generation';
+import ModelManagerScreen from "./src/screens/ModelManagerScreen";
+import { localLLMService } from "./src/api/local-llm";
+import { coreMLService } from "./src/api/core-ml-service";
 import { AIMessage } from './src/types/ai';
 
 // Chat Screen Component
@@ -34,7 +37,7 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
     "What's on my calendar?": "I would access your calendar through iOS EventKit to show your upcoming appointments and events."
   };
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const userMessage = {
       id: messages.length + 1,
       text: text,
@@ -44,10 +47,21 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
     setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Use local LLM service for AI response
+      const aiResponse = await localLLMService.sendMessage(text);
+      
+      const aiMessage = {
+        id: messages.length + 2,
+        text: aiResponse.content,
+        isUser: false
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      // Fallback to predefined responses if local LLM fails
       const response = aiResponses[text as keyof typeof aiResponses] || 
-        "That's an interesting question! In a full implementation, I would process your request through one of the integrated AI services (Anthropic Claude, OpenAI GPT, or Grok) while keeping everything private on your device.";
+        "I'm having trouble accessing the local AI model. Please check if a model is downloaded and active in Settings > Core ML Models.";
       
       const aiMessage = {
         id: messages.length + 2,
@@ -56,8 +70,9 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -564,11 +579,28 @@ function ToolsScreen({ onBack }: { onBack: () => void }) {
 
 // Settings Screen Component
 function SettingsScreen({ onBack }: { onBack: () => void }) {
+  const [activeModel, setActiveModel] = useState<string>("Loading...");
+  const [storageInfo, setStorageInfo] = useState<string>("Loading...");
+
+  useEffect(() => {
+    const updateModelInfo = () => {
+      const model = coreMLService.getActiveModel();
+      setActiveModel(model ? model.name : "No model active");
+      
+      const storage = coreMLService.getStorageInfo();
+      setStorageInfo(`${storage.totalUsed} Used`);
+    };
+
+    updateModelInfo();
+    const interval = setInterval(updateModelInfo, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   const settings = [
-    { name: "AI Provider", value: "Anthropic Claude", icon: "leaf-outline" },
-    { name: "Voice Language", value: "English (US)", icon: "language-outline" },
-    { name: "Privacy Mode", value: "On-Device Only", icon: "shield-checkmark" },
-    { name: "Model Storage", value: "2.1 GB Used", icon: "hardware-chip" },
+    { name: "AI Provider", value: activeModel, icon: "leaf-outline", action: "models" },
+    { name: "Voice Language", value: "English (US)", icon: "language-outline", action: "language" },
+    { name: "Privacy Mode", value: "On-Device Only", icon: "shield-checkmark", action: "privacy" },
+    { name: "Core ML Models", value: storageInfo, icon: "hardware-chip", action: "models" },
   ];
 
   return (
@@ -597,7 +629,13 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
               shadowRadius: 2,
               elevation: 2
             }}
-            onPress={() => Alert.alert(setting.name, `Current setting: ${setting.value}\n\nIn a full implementation, you could modify this setting here.`)}
+            onPress={() => {
+              if (setting.action === 'models') {
+                setCurrentScreen('models');
+              } else {
+                Alert.alert(setting.name, `Current setting: ${setting.value}\n\nIn a full implementation, you could modify this setting here.`);
+              }
+            }}
           >
             <View style={{
               width: 40,
@@ -647,6 +685,10 @@ export default function App() {
   
   if (currentScreen === 'settings') {
     return <SettingsScreen onBack={() => setCurrentScreen('home')} />;
+  }
+  
+  if (currentScreen === 'models') {
+    return <ModelManagerScreen onBack={() => setCurrentScreen('settings')} />;
   }
   
   return (
@@ -945,7 +987,7 @@ export default function App() {
                 shadowRadius: 4,
                 elevation: 3
               }}
-              onPress={() => Alert.alert("AI Image Generation", "Live image generation using OpenAI's DALL-E:\n\n• Generate custom images from text\n• High-quality 1024x1024 output\n• Multiple style options\n• Instant results\n\nTry it in the Chat or Tools section!")}
+              onPress={() => setCurrentScreen('models')}
             >
               <Ionicons name="hardware-chip" size={24} color="white" />
               <Text style={{
@@ -954,7 +996,7 @@ export default function App() {
                 color: 'white',
                 marginLeft: 12
               }}>
-                AI Image Generation
+                Core ML Models
               </Text>
             </Pressable>
 
