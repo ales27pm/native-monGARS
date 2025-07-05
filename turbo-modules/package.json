@@ -23,11 +23,7 @@
   },
   "author": "monGARS Team",
   "license": "MIT",
-  "react-native": {
-    "AIProcessorModule": "src/AIProcessorModule",
-    "VoiceProcessorModule": "src/VoiceProcessorModule", 
-    "PrivacyModule": "src/PrivacyModule"
-  },
+  "react-native": "src/index.ts",
   "peerDependencies": {
     "react": "*",
     "react-native": "*"

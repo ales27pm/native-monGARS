@@ -1,18 +1,32 @@
-// Export all Turbo Modules
+/**
+ * Main entry point for monGARS TurboModules.
+ * This file exports all native modules and provides convenience hooks for their usage.
+ */
+
+// Export all Turbo Modules for direct access
 export { default as AIProcessorModule } from './AIProcessorModule';
 export { default as VoiceProcessorModule } from './VoiceProcessorModule';
 export { default as PrivacyModule } from './PrivacyModule';
+export { default as LocalLLMModule } from './LocalLLMModule';
+export { default as LocalEmbeddingModule } from './LocalEmbeddingModule';
+export { default as ReActToolsModule } from './ReActToolsModule';
 
-// Export types
+// Export types for consumers
 export type { AIProcessorSpec } from './AIProcessorModule';
 export type { VoiceProcessorSpec } from './VoiceProcessorModule';
 export type { PrivacyModuleSpec } from './PrivacyModule';
+export type { LocalLLMSpec } from './LocalLLMModule';
+export type { LocalEmbeddingSpec } from './LocalEmbeddingModule';
+export type { ReActToolsSpec } from './ReActToolsModule';
 
 // Convenience hooks for using the modules
 import { useEffect, useState } from 'react';
 import AIProcessorModule from './AIProcessorModule';
 import VoiceProcessorModule from './VoiceProcessorModule';
 import PrivacyModule from './PrivacyModule';
+import LocalLLMModule from './LocalLLMModule';
+import LocalEmbeddingModule from './LocalEmbeddingModule';
+import ReActToolsModule from './ReActToolsModule';
 
 // AI Processor Hook
 export const useAIProcessor = () => {
@@ -34,19 +48,7 @@ export const useAIProcessor = () => {
   
   return {
     isReady,
-    optimizePrompt: AIProcessorModule.optimizePrompt,
-    processResponse: AIProcessorModule.processResponse,
-    setContext: AIProcessorModule.setContext,
-    getContext: AIProcessorModule.getContext,
-    clearContext: AIProcessorModule.clearContext,
-    preloadModel: AIProcessorModule.preloadModel,
-    getModelStatus: AIProcessorModule.getModelStatus,
-    sanitizeInput: AIProcessorModule.sanitizeInput,
-    checkForSensitiveData: AIProcessorModule.checkForSensitiveData,
-    cacheResponse: AIProcessorModule.cacheResponse,
-    getCachedResponse: AIProcessorModule.getCachedResponse,
-    clearCache: AIProcessorModule.clearCache,
-    getCacheStats: AIProcessorModule.getCacheStats,
+    ...AIProcessorModule,
   };
 };
 
@@ -100,24 +102,7 @@ export const useVoiceProcessor = () => {
     isListening,
     startListening,
     stopListening,
-    enableWakeWord: VoiceProcessorModule.enableWakeWord,
-    disableWakeWord: VoiceProcessorModule.disableWakeWord,
-    isWakeWordEnabled: VoiceProcessorModule.isWakeWordEnabled,
-    getWakeWordStatus: VoiceProcessorModule.getWakeWordStatus,
-    processAudioBuffer: VoiceProcessorModule.processAudioBuffer,
-    enhanceAudio: VoiceProcessorModule.enhanceAudio,
-    reduceNoise: VoiceProcessorModule.reduceNoise,
-    normalizeVolume: VoiceProcessorModule.normalizeVolume,
-    startRealTimeTranscription: VoiceProcessorModule.startRealTimeTranscription,
-    stopRealTimeTranscription: VoiceProcessorModule.stopRealTimeTranscription,
-    getRealTimeTranscription: VoiceProcessorModule.getRealTimeTranscription,
-    registerVoiceCommand: VoiceProcessorModule.registerVoiceCommand,
-    unregisterVoiceCommand: VoiceProcessorModule.unregisterVoiceCommand,
-    getRegisteredCommands: VoiceProcessorModule.getRegisteredCommands,
-    getAudioStats: VoiceProcessorModule.getAudioStats,
-    enablePrivateMode: VoiceProcessorModule.enablePrivateMode,
-    disablePrivateMode: VoiceProcessorModule.disablePrivateMode,
-    isPrivateModeEnabled: VoiceProcessorModule.isPrivateModeEnabled,
+    ...VoiceProcessorModule,
   };
 };
 
@@ -141,26 +126,134 @@ export const usePrivacy = () => {
   
   return {
     isReady,
-    encryptData: PrivacyModule.encryptData,
-    decryptData: PrivacyModule.decryptData,
-    generateEncryptionKey: PrivacyModule.generateEncryptionKey,
-    secureStore: PrivacyModule.secureStore,
-    secureRetrieve: PrivacyModule.secureRetrieve,
-    secureDelete: PrivacyModule.secureDelete,
-    secureListKeys: PrivacyModule.secureListKeys,
-    secureClear: PrivacyModule.secureClear,
-    scanForPII: PrivacyModule.scanForPII,
-    sanitizeText: PrivacyModule.sanitizeText,
-    checkGDPRCompliance: PrivacyModule.checkGDPRCompliance,
-    checkCCPACompliance: PrivacyModule.checkCCPACompliance,
-    isBiometricAvailable: PrivacyModule.isBiometricAvailable,
-    authenticateWithBiometric: PrivacyModule.authenticateWithBiometric,
-    isDeviceSecure: PrivacyModule.isDeviceSecure,
-    enableVPNMode: PrivacyModule.enableVPNMode,
-    disableVPNMode: PrivacyModule.disableVPNMode,
-    isVPNActive: PrivacyModule.isVPNActive,
-    getPrivacyReport: PrivacyModule.getPrivacyReport,
-    checkPermissions: PrivacyModule.checkPermissions,
-    requestPermission: PrivacyModule.requestPermission,
+    ...PrivacyModule,
+  };
+};
+
+// Local LLM Hook
+export const useLocalLLM = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [loadedModels, setLoadedModels] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const models = await LocalLLMModule.getLoadedModels();
+        setLoadedModels(models);
+        setIsReady(true);
+      } catch (error) {
+        console.error('Failed to initialize Local LLM:', error);
+      }
+    };
+    
+    init();
+  }, []);
+  
+  const loadModel = async (modelName: string) => {
+    try {
+      const success = await LocalLLMModule.loadModel(modelName);
+      if (success) {
+        const models = await LocalLLMModule.getLoadedModels();
+        setLoadedModels(models);
+      }
+      return success;
+    } catch (error) {
+      console.error('Failed to load model:', error);
+      return false;
+    }
+  };
+  
+  return {
+    isReady,
+    loadedModels,
+    loadModel,
+    ...LocalLLMModule,
+  };
+};
+
+// Local Embedding Hook
+export const useLocalEmbedding = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [loadedModels, setLoadedModels] = useState<string[]>([]);
+  
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const models = await LocalEmbeddingModule.getLoadedEmbeddingModels();
+        setLoadedModels(models);
+        setIsReady(true);
+      } catch (error) {
+        console.error('Failed to initialize Local Embedding:', error);
+      }
+    };
+    
+    init();
+  }, []);
+  
+  const loadEmbeddingModel = async (modelName: string) => {
+    try {
+      const success = await LocalEmbeddingModule.loadEmbeddingModel(modelName);
+      if (success) {
+        const models = await LocalEmbeddingModule.getLoadedEmbeddingModels();
+        setLoadedModels(models);
+      }
+      return success;
+    } catch (error) {
+      console.error('Failed to load embedding model:', error);
+      return false;
+    }
+  };
+  
+  return {
+    isReady,
+    loadedModels,
+    loadEmbeddingModel,
+    ...LocalEmbeddingModule,
+  };
+};
+
+// ReAct Tools Hook
+export const useReActTools = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [registeredTools, setRegisteredTools] = useState<Array<{
+    id: string;
+    name: string;
+    description: string;
+    enabled: boolean;
+  }>>([]);
+  
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const tools = await ReActToolsModule.getRegisteredTools();
+        setRegisteredTools(tools);
+        setIsReady(true);
+      } catch (error) {
+        console.error('Failed to initialize ReAct Tools:', error);
+      }
+    };
+    
+    init();
+  }, []);
+  
+  const registerTool = async (toolName: string, toolFunction: string) => {
+    try {
+      const result = await ReActToolsModule.registerTool(toolName, toolFunction);
+      if (result.success) {
+        const tools = await ReActToolsModule.getRegisteredTools();
+        setRegisteredTools(tools);
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to register tool:', error);
+      return { success: false, error: error.message };
+    }
+  };
+  
+  return {
+    isReady,
+    registeredTools,
+    registerTool,
+    ...ReActToolsModule,
   };
 };
