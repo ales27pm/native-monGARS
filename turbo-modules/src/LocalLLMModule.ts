@@ -12,7 +12,36 @@ export interface LocalLLMSpec extends TurboModule {
     version: string;
     capabilities: string[];
     loaded: boolean;
+    downloaded: boolean;
   }>;
+  
+  // Model Download Management
+  downloadModel(modelName: string, downloadURL: string): Promise<{
+    downloadStarted?: boolean;
+    success?: boolean;
+    modelName: string;
+    localPath?: string;
+  }>;
+  cancelDownload(modelName: string): Promise<boolean>;
+  getDownloadProgress(modelName: string): Promise<{
+    modelName: string;
+    isDownloading: boolean;
+    bytesReceived?: number;
+    totalBytes?: number;
+    progress: number;
+  }>;
+  deleteModel(modelName: string): Promise<boolean>;
+  getAvailableSpace(): Promise<{
+    freeSpace: number;
+    totalSpace: number;
+    usedSpace: number;
+  }>;
+  listDownloadedModels(): Promise<Array<{
+    name: string;
+    size: number;
+    downloadDate: number;
+    loaded: boolean;
+  }>>;
   
   // State Management
   initializeState(): Promise<string>; // Returns state ID

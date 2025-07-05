@@ -134,12 +134,29 @@ export const usePrivacy = () => {
 export const useLocalLLM = () => {
   const [isReady, setIsReady] = useState(false);
   const [loadedModels, setLoadedModels] = useState<string[]>([]);
+  const [downloadedModels, setDownloadedModels] = useState<Array<{
+    name: string;
+    size: number;
+    downloadDate: number;
+    loaded: boolean;
+  }>>([]);
+  const [availableSpace, setAvailableSpace] = useState<{
+    freeSpace: number;
+    totalSpace: number;
+    usedSpace: number;
+  } | null>(null);
   
   useEffect(() => {
     const init = async () => {
       try {
-        const models = await LocalLLMModule.getLoadedModels();
+        const [models, downloads, space] = await Promise.all([
+          LocalLLMModule.getLoadedModels(),
+          LocalLLMModule.listDownloadedModels(),
+          LocalLLMModule.getAvailableSpace()
+        ]);
         setLoadedModels(models);
+        setDownloadedModels(downloads);
+        setAvailableSpace(space);
         setIsReady(true);
       } catch (error) {
         console.error('Failed to initialize Local LLM:', error);
@@ -163,10 +180,63 @@ export const useLocalLLM = () => {
     }
   };
   
+  const downloadModel = async (modelName: string, downloadURL: string) => {
+    try {
+      const result = await LocalLLMModule.downloadModel(modelName, downloadURL);
+      // Refresh downloaded models list
+      const downloads = await LocalLLMModule.listDownloadedModels();
+      setDownloadedModels(downloads);
+      return result;
+    } catch (error) {
+      console.error('Failed to download model:', error);
+      return { success: false, error: error.message };
+    }
+  };
+  
+  const deleteModel = async (modelName: string) => {
+    try {
+      const success = await LocalLLMModule.deleteModel(modelName);
+      if (success) {
+        const [models, downloads, space] = await Promise.all([
+          LocalLLMModule.getLoadedModels(),
+          LocalLLMModule.listDownloadedModels(),
+          LocalLLMModule.getAvailableSpace()
+        ]);
+        setLoadedModels(models);
+        setDownloadedModels(downloads);
+        setAvailableSpace(space);
+      }
+      return success;
+    } catch (error) {
+      console.error('Failed to delete model:', error);
+      return false;
+    }
+  };
+  
+  const refreshModels = async () => {
+    try {
+      const [models, downloads, space] = await Promise.all([
+        LocalLLMModule.getLoadedModels(),
+        LocalLLMModule.listDownloadedModels(),
+        LocalLLMModule.getAvailableSpace()
+      ]);
+      setLoadedModels(models);
+      setDownloadedModels(downloads);
+      setAvailableSpace(space);
+    } catch (error) {
+      console.error('Failed to refresh models:', error);
+    }
+  };
+  
   return {
     isReady,
     loadedModels,
+    downloadedModels,
+    availableSpace,
     loadModel,
+    downloadModel,
+    deleteModel,
+    refreshModels,
     ...LocalLLMModule,
   };
 };

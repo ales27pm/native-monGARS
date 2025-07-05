@@ -4,35 +4,254 @@ import CoreML
 @objc(LocalLLMModule)
 class LocalLLMModule: NSObject {
   
+  private var loadedModels: [String: MLModel] = [:]
+  private var modelDownloads: [String: URLSessionDownloadTask] = [:]
+  private let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+  
+  // MARK: - Model Management
+  
   @objc
   func loadModel(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
-    resolve(true)
+    DispatchQueue.global(qos: .userInitiated).async {
+      do {
+        let modelURL = self.documentsPath.appendingPathComponent("\(modelName).mlmodelc")
+        
+        // Check if model exists locally
+        guard FileManager.default.fileExists(atPath: modelURL.path) else {
+          DispatchQueue.main.async {
+            reject("MODEL_NOT_FOUND", "Model \(modelName) not found locally. Please download it first.", nil)
+          }
+          return
+        }
+        
+        // Load the Core ML model
+        let model = try MLModel(contentsOf: modelURL)
+        self.loadedModels[modelName] = model
+        
+        DispatchQueue.main.async {
+          resolve(true)
+        }
+      } catch {
+        DispatchQueue.main.async {
+          reject("MODEL_LOAD_ERROR", "Failed to load model \(modelName): \(error.localizedDescription)", error)
+        }
+      }
+    }
   }
   
   @objc
   func unloadModel(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
+    loadedModels.removeValue(forKey: modelName)
     resolve(true)
   }
   
   @objc
   func getLoadedModels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    let models = ["llama-7b", "gpt-neo-125m"]
+    let models = Array(loadedModels.keys)
     resolve(models)
   }
   
   @objc
   func getModelInfo(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    let modelURL = documentsPath.appendingPathComponent("\(modelName).mlmodelc")
+    let isLoaded = loadedModels[modelName] != nil
+    let exists = FileManager.default.fileExists(atPath: modelURL.path)
+    
+    var size: Int64 = 0
+    if exists {
+      do {
+        let attributes = try FileManager.default.attributesOfItem(atPath: modelURL.path)
+        size = attributes[.size] as? Int64 ?? 0
+      } catch {
+        // Ignore size calculation errors
+      }
+    }
+    
     let result: [String: Any] = [
       "name": modelName,
-      "size": 7000000000, // 7B parameters
+      "size": size,
       "version": "1.0",
       "capabilities": ["text-generation", "conversation"],
-      "loaded": true
+      "loaded": isLoaded,
+      "downloaded": exists
     ]
     resolve(result)
   }
+  
+  // MARK: - Model Download
+  
+  @objc
+  func downloadModel(_ modelName: String, downloadURL: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    // Cancel any existing download for this model
+    if let existingDownload = modelDownloads[modelName] {
+      existingDownload.cancel()
+    }
+    
+    guard let url = URL(string: downloadURL) else {
+      reject("INVALID_URL", "Invalid download URL provided", nil)
+      return
+    }
+    
+    let session = URLSession.shared
+    let downloadTask = session.downloadTask(with: url) { [weak self] tempURL, response, error in
+      guard let self = self else { return }
+      
+      // Remove from active downloads
+      self.modelDownloads.removeValue(forKey: modelName)
+      
+      if let error = error {
+        DispatchQueue.main.async {
+          reject("DOWNLOAD_ERROR", "Failed to download model: \(error.localizedDescription)", error)
+        }
+        return
+      }
+      
+      guard let tempURL = tempURL else {
+        DispatchQueue.main.async {
+          reject("DOWNLOAD_ERROR", "No temporary file received", nil)
+        }
+        return
+      }
+      
+      do {
+        let finalURL = self.documentsPath.appendingPathComponent("\(modelName).mlmodelc")
+        
+        // Remove existing file if it exists
+        if FileManager.default.fileExists(atPath: finalURL.path) {
+          try FileManager.default.removeItem(at: finalURL)
+        }
+        
+        // Move downloaded file to documents directory
+        try FileManager.default.moveItem(at: tempURL, to: finalURL)
+        
+        DispatchQueue.main.async {
+          resolve([
+            "success": true,
+            "modelName": modelName,
+            "localPath": finalURL.path
+          ])
+        }
+      } catch {
+        DispatchQueue.main.async {
+          reject("FILE_MOVE_ERROR", "Failed to move downloaded model: \(error.localizedDescription)", error)
+        }
+      }
+    }
+    
+    // Store the download task
+    modelDownloads[modelName] = downloadTask
+    
+    // Start the download
+    downloadTask.resume()
+    
+    // Return immediately with download started confirmation
+    resolve([
+      "downloadStarted": true,
+      "modelName": modelName
+    ])
+  }
+  
+  @objc
+  func cancelDownload(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    if let downloadTask = modelDownloads[modelName] {
+      downloadTask.cancel()
+      modelDownloads.removeValue(forKey: modelName)
+      resolve(true)
+    } else {
+      resolve(false) // No active download found
+    }
+  }
+  
+  @objc
+  func getDownloadProgress(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    if let downloadTask = modelDownloads[modelName] {
+      let progress = downloadTask.progress
+      resolve([
+        "modelName": modelName,
+        "isDownloading": true,
+        "bytesReceived": progress.completedUnitCount,
+        "totalBytes": progress.totalUnitCount,
+        "progress": progress.fractionCompleted
+      ])
+    } else {
+      resolve([
+        "modelName": modelName,
+        "isDownloading": false,
+        "progress": 0.0
+      ])
+    }
+  }
+  
+  @objc
+  func deleteModel(_ modelName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    // First unload the model from memory
+    loadedModels.removeValue(forKey: modelName)
+    
+    // Then delete the file
+    let modelURL = documentsPath.appendingPathComponent("\(modelName).mlmodelc")
+    
+    do {
+      if FileManager.default.fileExists(atPath: modelURL.path) {
+        try FileManager.default.removeItem(at: modelURL)
+      }
+      resolve(true)
+    } catch {
+      reject("DELETE_ERROR", "Failed to delete model: \(error.localizedDescription)", error)
+    }
+  }
+  
+  @objc
+  func getAvailableSpace(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    do {
+      let attributes = try FileManager.default.attributesOfFileSystem(forPath: documentsPath.path)
+      let freeSpace = attributes[.systemFreeSize] as? Int64 ?? 0
+      let totalSpace = attributes[.systemSize] as? Int64 ?? 0
+      
+      resolve([
+        "freeSpace": freeSpace,
+        "totalSpace": totalSpace,
+        "usedSpace": totalSpace - freeSpace
+      ])
+    } catch {
+      reject("SPACE_CHECK_ERROR", "Failed to get available space: \(error.localizedDescription)", error)
+    }
+  }
+  
+  @objc
+  func listDownloadedModels(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    do {
+      let contents = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: [.fileSizeKey, .creationDateKey], options: [])
+      
+      let models = contents.compactMap { url -> [String: Any]? in
+        guard url.pathExtension == "mlmodelc" else { return nil }
+        
+        let modelName = url.deletingPathExtension().lastPathComponent
+        
+        do {
+          let attributes = try url.resourceValues(forKeys: [.fileSizeKey, .creationDateKey])
+          return [
+            "name": modelName,
+            "size": attributes.fileSize ?? 0,
+            "downloadDate": attributes.creationDate?.timeIntervalSince1970 ?? 0,
+            "loaded": loadedModels[modelName] != nil
+          ]
+        } catch {
+          return [
+            "name": modelName,
+            "size": 0,
+            "downloadDate": 0,
+            "loaded": loadedModels[modelName] != nil
+          ]
+        }
+      }
+      
+      resolve(models)
+    } catch {
+      reject("LIST_ERROR", "Failed to list downloaded models: \(error.localizedDescription)", error)
+    }
+  }
+  
+  // MARK: - State Management
   
   @objc
   func initializeState(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
@@ -42,31 +261,43 @@ class LocalLLMModule: NSObject {
   
   @objc
   func saveState(_ stateId: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
+    // Mock implementation for state persistence
     resolve(true)
   }
   
   @objc
   func loadState(_ stateId: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
+    // Mock implementation for state loading
     resolve(true)
   }
   
   @objc
   func clearState(_ stateId: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
+    // Mock implementation for state clearing
     resolve(true)
   }
   
+  // MARK: - Text Generation
+  
   @objc
   func generateText(_ prompt: String, options: NSDictionary?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    let result: [String: Any] = [
-      "text": "This is a mock response to: \(prompt)",
-      "tokens": 15,
-      "finishReason": "stop",
-      "processingTime": 250
-    ]
-    resolve(result)
+    // Mock implementation for text generation
+    // In a real implementation, this would use the loaded Core ML model
+    DispatchQueue.global(qos: .userInitiated).async {
+      // Simulate processing time
+      Thread.sleep(forTimeInterval: 0.5)
+      
+      let result: [String: Any] = [
+        "text": "This is a mock response to: \(prompt)",
+        "tokens": 15,
+        "finishReason": "stop",
+        "processingTime": 500
+      ]
+      
+      DispatchQueue.main.async {
+        resolve(result)
+      }
+    }
   }
   
   @objc
@@ -86,13 +317,13 @@ class LocalLLMModule: NSObject {
   
   @objc
   func stopStream(_ sessionId: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
     resolve(true)
   }
   
+  // MARK: - Configuration
+  
   @objc
   func setSystemPrompt(_ prompt: String, stateId: String?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
     resolve(true)
   }
   
@@ -103,30 +334,27 @@ class LocalLLMModule: NSObject {
   
   @objc
   func addToContext(_ message: String, role: String, stateId: String?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
     resolve(true)
   }
   
   @objc
   func getContext(_ stateId: String?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock empty context
     let context: [[String: Any]] = []
     resolve(context)
   }
   
   @objc
   func clearContext(_ stateId: String?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
     resolve(true)
   }
   
   @objc
   func getPerformanceStats(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     let result: [String: Any] = [
-      "totalInferences": 150,
-      "averageLatency": 245.5,
-      "memoryUsage": 1024,
-      "cpuUsage": 45.2,
+      "totalInferences": 0,
+      "averageLatency": 0.0,
+      "memoryUsage": 0,
+      "cpuUsage": 0.0,
       "gpuUsage": 0.0
     ]
     resolve(result)
@@ -134,7 +362,6 @@ class LocalLLMModule: NSObject {
   
   @objc
   func setModelConfig(_ config: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    // Mock implementation
     resolve(true)
   }
   
