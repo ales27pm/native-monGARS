@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,192 +9,32 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { VoiceService, type VoiceRecording, type VoiceStats } from '../services/VoiceService';
+import { useVoice } from '../hooks/useVoice';
+import { VoiceRecording } from '../services/VoiceService';
 
 export default function VoiceScreen() {
-  const [isListening, setIsListening] = useState(false);
-  const [transcription, setTranscription] = useState({ partial: '', final: '' });
-  const [lastResponse, setLastResponse] = useState<string | null>(null);
-  const [wakeWordEnabled, setWakeWordEnabledState] = useState(false);
-  const [voiceStats, setVoiceStats] = useState<VoiceStats | null>(null);
-  const [recordings, setRecordings] = useState<VoiceRecording[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    isListening,
+    isProcessing,
+    transcription,
+    error,
+    recordings,
+    stats,
+    wakeWordEnabled,
+    startListening,
+    stopListening,
+    toggleWakeWord,
+    playRecording,
+    deleteRecording,
+    transcribeRecording,
+    quickTranscribe,
+  } = useVoice();
 
-  const voiceService = VoiceService.getInstance();
-
-  useEffect(() => {
-    initializeVoice();
-    const interval = setInterval(loadStats, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const initializeVoice = async () => {
-    try {
-      setLoading(true);
-      const initialized = await voiceService.initialize();
-      if (!initialized) {
-        setError('Failed to initialize voice service. Please check microphone permissions.');
-      } else {
-        loadStats();
-        loadRecordings();
-      }
-    } catch (error) {
-      console.error('Voice initialization error:', error);
-      setError('Error initializing voice service.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadStats = () => {
-    try {
-      const stats = voiceService.getStats();
-      setVoiceStats(stats);
-      setIsListening(stats.listening);
-      setWakeWordEnabledState(stats.wakeWordEnabled);
-    } catch (error) {
-      console.warn('Failed to load voice stats:', error);
-    }
-  };
-
-  const loadRecordings = () => {
-    try {
-      const allRecordings = voiceService.getRecordings();
-      setRecordings(allRecordings.slice(-10)); // Show last 10 recordings
-    } catch (error) {
-      console.warn('Failed to load recordings:', error);
-    }
-  };
-
-  const clearError = () => {
-    setError(null);
-  };
-
-  useEffect(() => {
+  React.useEffect(() => {
     if (error) {
-      Alert.alert('Voice Error', error, [{ text: 'OK', onPress: clearError }]);
+      Alert.alert('Voice Error', error);
     }
   }, [error]);
-
-  const handleStartListening = async () => {
-    try {
-      setLoading(true);
-      const success = await voiceService.startRecording();
-      if (!success) {
-        Alert.alert('Error', 'Failed to start voice recognition. Please check microphone permissions.');
-      } else {
-        setTranscription({ partial: '', final: '' });
-        setLastResponse(null);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to start voice recognition.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStopListening = async () => {
-    try {
-      setLoading(true);
-      const recording = await voiceService.stopRecording();
-      if (recording) {
-        loadRecordings();
-        // Automatically transcribe the recording
-        transcribeRecording(recording);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to stop voice recognition.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const transcribeRecording = async (recording: VoiceRecording) => {
-    try {
-      setLoading(true);
-      const transcriptionText = await voiceService.transcribeRecording(recording);
-      setTranscription({ partial: '', final: transcriptionText });
-      setLastResponse(transcriptionText);
-      loadRecordings(); // Refresh to show updated transcription
-    } catch (error) {
-      console.error('Transcription error:', error);
-      Alert.alert('Error', 'Failed to transcribe recording. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleWakeWordToggle = async () => {
-    try {
-      const newValue = !wakeWordEnabled;
-      voiceService.setWakeWordEnabled(newValue);
-      setWakeWordEnabledState(newValue);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to toggle wake word detection.');
-    }
-  };
-
-  const playRecording = async (recording: VoiceRecording) => {
-    try {
-      await voiceService.playRecording(recording);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to play recording.');
-    }
-  };
-
-  const deleteRecording = async (recordingId: string) => {
-    Alert.alert(
-      'Delete Recording',
-      'Are you sure you want to delete this recording?',
-      [
-        { text: 'Cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await voiceService.deleteRecording(recordingId);
-              loadRecordings();
-              loadStats();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete recording.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const quickTranscribe = async () => {
-    try {
-      setLoading(true);
-      Alert.alert(
-        'Quick Transcribe',
-        'This will record for 5 seconds and then transcribe. Ready?',
-        [
-          { text: 'Cancel' },
-          {
-            text: 'Start',
-            onPress: async () => {
-              try {
-                const transcriptionText = await voiceService.quickTranscribe();
-                setTranscription({ partial: '', final: transcriptionText });
-                setLastResponse(transcriptionText);
-                loadStats();
-              } catch (error) {
-                Alert.alert('Error', 'Failed to complete quick transcribe.');
-              }
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to start quick transcribe.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const StatusCard = ({ title, status, icon, color }: any) => (
     <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-3">
@@ -219,7 +59,7 @@ export default function VoiceScreen() {
     <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-3">
       <View className="flex-row items-center justify-between mb-2">
         <Text className="text-gray-900 font-semibold">
-          {recording.timestamp.toLocaleTimeString()}
+          {new Date(recording.timestamp).toLocaleTimeString()}
         </Text>
         <Text className="text-gray-500 text-sm">
           {Math.round(recording.duration / 1000)}s
@@ -235,7 +75,7 @@ export default function VoiceScreen() {
       <View className="flex-row items-center justify-between">
         <Pressable
           onPress={() => playRecording(recording)}
-          className="flex-row items-center bg-blue-100 px-3 py-2 rounded-lg"
+          className="flex-row items-center bg-blue-100 px-3 py-2 rounded-lg active:bg-blue-200"
         >
           <Ionicons name="play" size={16} color="#3B82F6" />
           <Text className="text-blue-600 ml-1 font-medium">Play</Text>
@@ -244,7 +84,8 @@ export default function VoiceScreen() {
         {!recording.transcription && (
           <Pressable
             onPress={() => transcribeRecording(recording)}
-            className="flex-row items-center bg-green-100 px-3 py-2 rounded-lg"
+            className="flex-row items-center bg-green-100 px-3 py-2 rounded-lg active:bg-green-200"
+            disabled={isProcessing}
           >
             <Ionicons name="document-text" size={16} color="#10B981" />
             <Text className="text-green-600 ml-1 font-medium">Transcribe</Text>
@@ -252,8 +93,21 @@ export default function VoiceScreen() {
         )}
         
         <Pressable
-          onPress={() => deleteRecording(recording.id)}
-          className="flex-row items-center bg-red-100 px-3 py-2 rounded-lg"
+          onPress={() => {
+            Alert.alert(
+              'Delete Recording',
+              'Are you sure you want to delete this recording?',
+              [
+                { text: 'Cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: () => deleteRecording(recording.id),
+                },
+              ]
+            );
+          }}
+          className="flex-row items-center bg-red-100 px-3 py-2 rounded-lg active:bg-red-200"
         >
           <Ionicons name="trash" size={16} color="#EF4444" />
           <Text className="text-red-600 ml-1 font-medium">Delete</Text>
@@ -262,7 +116,7 @@ export default function VoiceScreen() {
     </View>
   );
 
-  if (loading && !voiceStats) {
+  if (!stats?.initialized) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 items-center justify-center">
         <ActivityIndicator size="large" color="#3B82F6" />
@@ -287,13 +141,13 @@ export default function VoiceScreen() {
           <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <View className="items-center">
               <Pressable
-                onPress={isListening ? handleStopListening : handleStartListening}
-                disabled={loading}
+                onPress={isListening ? stopListening : startListening}
+                disabled={isProcessing}
                 className={`w-24 h-24 rounded-full items-center justify-center mb-4 ${
                   isListening ? 'bg-red-500' : 'bg-blue-500'
-                } ${loading ? 'opacity-50' : ''}`}
+                } ${isProcessing ? 'opacity-50' : ''}`}
               >
-                {loading ? (
+                {isProcessing ? (
                   <ActivityIndicator color="white" size="large" />
                 ) : (
                   <Ionicons
@@ -311,15 +165,27 @@ export default function VoiceScreen() {
               <Text className="text-gray-600 text-center mb-4">
                 {isListening 
                   ? 'Recording your voice...' 
-                  : 'Press and hold to record your voice for transcription'
+                  : 'Press to start recording your voice for transcription'
                 }
               </Text>
 
               <Pressable
-                onPress={quickTranscribe}
-                disabled={loading || isListening}
+                onPress={() => {
+                  Alert.alert(
+                    'Quick Transcribe',
+                    'This will record for 5 seconds and then transcribe. Ready?',
+                    [
+                      { text: 'Cancel' },
+                      {
+                        text: 'Start',
+                        onPress: quickTranscribe,
+                      },
+                    ]
+                  );
+                }}
+                disabled={isProcessing || isListening}
                 className={`bg-green-500 px-6 py-3 rounded-xl ${
-                  loading || isListening ? 'opacity-50' : ''
+                  isProcessing || isListening ? 'opacity-50' : ''
                 }`}
               >
                 <Text className="text-white font-semibold">Quick Transcribe (5s)</Text>
@@ -333,7 +199,7 @@ export default function VoiceScreen() {
             
             <StatusCard
               title="Voice Recognition"
-              status={voiceStats?.initialized ? 'Ready' : 'Not Initialized'}
+              status={stats.initialized ? 'Ready' : 'Not Initialized'}
               icon="mic-outline"
               color="bg-blue-500"
             />
@@ -358,7 +224,7 @@ export default function VoiceScreen() {
             <Text className="text-lg font-bold text-gray-900 mb-4">Settings</Text>
             
             <Pressable
-              onPress={handleWakeWordToggle}
+              onPress={toggleWakeWord}
               className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-3"
             >
               <View className="flex-row items-center justify-between">
@@ -385,12 +251,12 @@ export default function VoiceScreen() {
           </View>
 
           {/* Recent Transcription */}
-          {(transcription.final || lastResponse) && (
+          {transcription && (
             <View className="mb-6">
               <Text className="text-lg font-bold text-gray-900 mb-4">Latest Transcription</Text>
               <View className="bg-blue-50 rounded-2xl p-4">
                 <Text className="text-blue-900 font-medium">
-                  "{transcription.final || lastResponse}"
+                  "{transcription}"
                 </Text>
               </View>
             </View>
@@ -409,25 +275,25 @@ export default function VoiceScreen() {
           )}
 
           {/* Statistics */}
-          {voiceStats && (
+          {stats && (
             <View className="mb-6">
               <Text className="text-lg font-bold text-gray-900 mb-4">Statistics</Text>
               <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-gray-600">Total Recordings</Text>
-                  <Text className="text-gray-900 font-semibold">{voiceStats.recordingsCount}</Text>
+                  <Text className="text-gray-900 font-semibold">{stats.recordingsCount}</Text>
                 </View>
                 <View className="flex-row justify-between items-center mb-2">
                   <Text className="text-gray-600">Total Duration</Text>
                   <Text className="text-gray-900 font-semibold">
-                    {Math.round(voiceStats.totalDuration / 1000)}s
+                    {Math.round(stats.totalDuration / 1000)}s
                   </Text>
                 </View>
-                {voiceStats.lastRecording && (
+                {stats.lastRecording && (
                   <View className="flex-row justify-between items-center">
                     <Text className="text-gray-600">Last Recording</Text>
                     <Text className="text-gray-900 font-semibold">
-                      {voiceStats.lastRecording.toLocaleString()}
+                      {stats.lastRecording.toLocaleString()}
                     </Text>
                   </View>
                 )}
