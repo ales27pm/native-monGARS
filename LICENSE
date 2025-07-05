@@ -1,0 +1,43 @@
+MIT License
+
+Copyright (c) 2025 monGARS - Privacy-First AI Assistant
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+ADDITIONAL PRIVACY NOTICE:
+
+monGARS is designed with privacy as a fundamental principle. The software is 
+specifically engineered to:
+
+1. Process all AI inference locally on the user's device
+2. Never transmit personal data or conversations to external servers
+3. Store all data securely within the iOS application sandbox
+4. Respect user privacy through hardware-backed encryption
+5. Provide transparent control over all data and model management
+
+By using this software, you acknowledge that:
+- All AI processing occurs entirely on your device
+- No personal data is collected, transmitted, or stored externally
+- You maintain complete control over your data and AI models
+- The software is designed to enhance privacy, not compromise it
+
+For more information about our privacy practices, please refer to the 
+documentation in the docs/ directory of this repository.
