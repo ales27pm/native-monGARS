@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import useSettings from '../hooks/useSettings';
 
 export default function SettingsScreen() {
-  const [notifications, setNotifications] = useState(true);
-  const [privacy, setPrivacy] = useState(true);
-  const [analytics, setAnalytics] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const {
+    privacyMode,
+    autoSaveConversations,
+    notificationsEnabled,
+    darkMode,
+    setSetting,
+    resetSettings,
+  } = useSettings();
 
   const SettingCard = ({ title, description, icon, color, children }: any) => (
     <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-3">
@@ -56,6 +61,7 @@ export default function SettingsScreen() {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Clear', style: 'destructive', onPress: () => {
+          resetSettings();
           Alert.alert('Success', 'App data cleared successfully.');
         }},
       ]
@@ -98,10 +104,10 @@ export default function SettingsScreen() {
             color="bg-green-500"
           >
             <Switch
-              value={privacy}
-              onValueChange={setPrivacy}
+              value={privacyMode}
+              onValueChange={(value) => setSetting('privacyMode', value)}
               trackColor={{ false: '#E5E7EB', true: '#10B981' }}
-              thumbColor={privacy ? '#FFFFFF' : '#9CA3AF'}
+              thumbColor={privacyMode ? '#FFFFFF' : '#9CA3AF'}
             />
           </SettingCard>
           
@@ -112,10 +118,10 @@ export default function SettingsScreen() {
             color="bg-blue-500"
           >
             <Switch
-              value={analytics}
-              onValueChange={setAnalytics}
+              value={autoSaveConversations}
+              onValueChange={(value) => setSetting('autoSaveConversations', value)}
               trackColor={{ false: '#E5E7EB', true: '#3B82F6' }}
-              thumbColor={analytics ? '#FFFFFF' : '#9CA3AF'}
+              thumbColor={autoSaveConversations ? '#FFFFFF' : '#9CA3AF'}
             />
           </SettingCard>
         </View>
@@ -131,10 +137,10 @@ export default function SettingsScreen() {
             color="bg-purple-500"
           >
             <Switch
-              value={notifications}
-              onValueChange={setNotifications}
+              value={notificationsEnabled}
+              onValueChange={(value) => setSetting('notificationsEnabled', value)}
               trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
-              thumbColor={notifications ? '#FFFFFF' : '#9CA3AF'}
+              thumbColor={notificationsEnabled ? '#FFFFFF' : '#9CA3AF'}
             />
           </SettingCard>
           
@@ -146,7 +152,7 @@ export default function SettingsScreen() {
           >
             <Switch
               value={darkMode}
-              onValueChange={setDarkMode}
+              onValueChange={(value) => setSetting('theme', value ? 'dark' : 'light')}
               trackColor={{ false: '#E5E7EB', true: '#374151' }}
               thumbColor={darkMode ? '#FFFFFF' : '#9CA3AF'}
             />
@@ -155,7 +161,7 @@ export default function SettingsScreen() {
 
         {/* Data Management */}
         <View className="mb-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">Data Management</Text>
+          <Text className="text-lg font-bold text-gray-900 mb-3">Data Management</Text>
           
           <ActionCard
             title="Export Data"
@@ -176,7 +182,7 @@ export default function SettingsScreen() {
 
         {/* About */}
         <View className="mb-8">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">About</Text>
+          <Text className="text-lg font-bold text-gray-900 mb-3">About</Text>
           
           <ActionCard
             title="About monGARS"
