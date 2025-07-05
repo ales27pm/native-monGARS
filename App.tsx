@@ -9,7 +9,50 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState([
     { id: 1, text: "Hello! I'm your monGARS AI Assistant. How can I help you today?", isUser: false },
   ]);
-  const [inputText, setInputText] = useState("");
+  const [currentInput, setCurrentInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+
+  const sampleQuestions = [
+    "What can you help me with?",
+    "How does privacy protection work?",
+    "Show me the weather",
+    "Set a reminder for tomorrow",
+    "What's on my calendar?"
+  ];
+
+  const aiResponses = {
+    "What can you help me with?": "I can assist you with various tasks including calendar management, contacts, file organization, voice commands, and smart AI conversations. All processing happens privately on your device using Core ML.",
+    "How does privacy protection work?": "Your data never leaves your device! I use Apple's Core ML framework for on-device AI processing. No conversations, files, or personal information is sent to external servers.",
+    "Show me the weather": "I would access your device's location and provide weather information. In a full implementation, this would integrate with native iOS weather APIs.",
+    "Set a reminder for tomorrow": "I would create a reminder in your iOS Reminders app. This would use native iOS integration for seamless experience.",
+    "What's on my calendar?": "I would access your calendar through iOS EventKit to show your upcoming appointments and events."
+  };
+
+  const sendMessage = (text: string) => {
+    const userMessage = {
+      id: messages.length + 1,
+      text: text,
+      isUser: true
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const response = aiResponses[text as keyof typeof aiResponses] || 
+        "That's an interesting question! In a full implementation, I would process your request through one of the integrated AI services (Anthropic Claude, OpenAI GPT, or Grok) while keeping everything private on your device.";
+      
+      const aiMessage = {
+        id: messages.length + 2,
+        text: response,
+        isUser: false
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+    }, 1500);
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
@@ -18,6 +61,14 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </Pressable>
         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#333' }}>AI Chat</Text>
+        <View style={{ flex: 1 }} />
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center'
+        }}>
+          <View style={{ width: 8, height: 8, backgroundColor: '#22c55e', borderRadius: 4, marginRight: 6 }} />
+          <Text style={{ fontSize: 12, color: '#22c55e', fontWeight: '600' }}>PRIVATE</Text>
+        </View>
       </View>
       
       <ScrollView style={{ flex: 1, padding: 16 }}>
@@ -43,9 +94,56 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
             </Text>
           </View>
         ))}
+        
+        {isTyping && (
+          <View
+            style={{
+              backgroundColor: 'white',
+              padding: 12,
+              borderRadius: 12,
+              marginBottom: 8,
+              alignSelf: 'flex-start',
+              maxWidth: '80%',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.1,
+              shadowRadius: 2,
+              elevation: 2
+            }}
+          >
+            <Text style={{ color: '#666', fontStyle: 'italic' }}>
+              AI is thinking...
+            </Text>
+          </View>
+        )}
       </ScrollView>
       
       <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 12 }}>
+          Try asking:
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+          {sampleQuestions.map((question, index) => (
+            <Pressable
+              key={index}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: 20,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                marginRight: 8,
+                borderWidth: 1,
+                borderColor: '#e5e7eb'
+              }}
+              onPress={() => sendMessage(question)}
+            >
+              <Text style={{ color: '#007AFF', fontSize: 14 }}>
+                {question}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        
         <Pressable
           style={{
             backgroundColor: '#007AFF',
@@ -54,11 +152,11 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
             alignItems: 'center'
           }}
           onPress={() => {
-            Alert.alert("AI Chat", "Chat functionality is ready! In a full implementation, this would connect to your preferred AI service (Anthropic, OpenAI, or Grok).");
+            Alert.alert("Custom Input", "In a full implementation, you could type custom messages here. For now, try the sample questions above!");
           }}
         >
           <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
-            Start Conversation
+            💬 Type Custom Message
           </Text>
         </Pressable>
       </View>
@@ -69,6 +167,35 @@ function ChatScreen({ onBack }: { onBack: () => void }) {
 // Voice Screen Component
 function VoiceScreen({ onBack }: { onBack: () => void }) {
   const [isListening, setIsListening] = useState(false);
+  const [recognizedText, setRecognizedText] = useState("");
+  const [showResult, setShowResult] = useState(false);
+
+  const startListening = () => {
+    setIsListening(true);
+    setRecognizedText("");
+    setShowResult(false);
+    
+    // Simulate speech recognition process
+    setTimeout(() => {
+      const samplePhrases = [
+        "What's the weather like today?",
+        "Set a reminder for 3 PM",
+        "Call John from my contacts",
+        "Open my calendar for tomorrow",
+        "What's my schedule for today?"
+      ];
+      const randomPhrase = samplePhrases[Math.floor(Math.random() * samplePhrases.length)];
+      setRecognizedText(randomPhrase);
+      setIsListening(false);
+      setShowResult(true);
+    }, 2500);
+  };
+
+  const stopListening = () => {
+    setIsListening(false);
+    setShowResult(false);
+    setRecognizedText("");
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
@@ -83,45 +210,100 @@ function VoiceScreen({ onBack }: { onBack: () => void }) {
         <View style={{
           width: 120,
           height: 120,
-          backgroundColor: isListening ? '#ef4444' : '#10b981',
+          backgroundColor: isListening ? '#ef4444' : (showResult ? '#22c55e' : '#6b7280'),
           borderRadius: 60,
           justifyContent: 'center',
           alignItems: 'center',
           marginBottom: 32
         }}>
-          <Ionicons name={isListening ? "mic" : "mic-outline"} size={60} color="white" />
+          <Ionicons 
+            name={isListening ? "mic" : (showResult ? "checkmark" : "mic-outline")} 
+            size={60} 
+            color="white" 
+          />
         </View>
         
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 16 }}>
-          {isListening ? "Listening..." : "Ready to Listen"}
+          {isListening ? "Listening..." : (showResult ? "Voice Recognized!" : "Ready to Listen")}
         </Text>
         
-        <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 }}>
-          {isListening 
-            ? "Speak now, I'm listening to your command"
-            : "Tap the microphone to start voice interaction"
-          }
-        </Text>
-        
-        <Pressable
-          style={{
-            backgroundColor: isListening ? '#ef4444' : '#10b981',
+        {showResult && recognizedText ? (
+          <View style={{
+            backgroundColor: 'white',
             borderRadius: 12,
             padding: 16,
-            paddingHorizontal: 32
-          }}
-          onPress={() => {
-            setIsListening(!isListening);
-            if (!isListening) {
-              Alert.alert("Voice Assistant", "Voice recognition activated! In a full implementation, this would process your speech using on-device recognition.");
-              setTimeout(() => setIsListening(false), 3000);
+            marginBottom: 24,
+            width: '100%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 3
+          }}>
+            <Text style={{ fontSize: 16, color: '#333', textAlign: 'center', marginBottom: 8 }}>
+              You said:
+            </Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#007AFF', textAlign: 'center' }}>
+              "{recognizedText}"
+            </Text>
+          </View>
+        ) : (
+          <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 32 }}>
+            {isListening 
+              ? "Speak now, I'm listening to your command"
+              : "Tap the microphone to start voice interaction"
             }
-          }}
-        >
-          <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
-            {isListening ? "Stop Listening" : "Start Voice Command"}
           </Text>
-        </Pressable>
+        )}
+        
+        {showResult ? (
+          <View style={{ width: '100%' }}>
+            <Pressable
+              style={{
+                backgroundColor: '#007AFF',
+                borderRadius: 12,
+                padding: 16,
+                marginBottom: 12,
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                Alert.alert("Processing Command", `AI would now process: "${recognizedText}"\n\nIn a full implementation, this would:\n• Parse your intent\n• Execute the command\n• Provide relevant response`);
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
+                Process Command
+              </Text>
+            </Pressable>
+            
+            <Pressable
+              style={{
+                backgroundColor: '#6b7280',
+                borderRadius: 12,
+                padding: 16,
+                alignItems: 'center'
+              }}
+              onPress={stopListening}
+            >
+              <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
+                Try Again
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            style={{
+              backgroundColor: isListening ? '#ef4444' : '#10b981',
+              borderRadius: 12,
+              padding: 16,
+              paddingHorizontal: 32
+            }}
+            onPress={isListening ? stopListening : startListening}
+          >
+            <Text style={{ color: 'white', fontWeight: '600', fontSize: 16 }}>
+              {isListening ? "Stop Listening" : "Start Voice Command"}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
