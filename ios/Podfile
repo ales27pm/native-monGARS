@@ -42,10 +42,11 @@ target 'monGARS' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
-  # Test target with proper configuration
+  # CRITICAL: Properly nested test target for reliable linking
   target 'monGARSTests' do
     inherit! :search_paths
-    # Test target inherits the same configuration as the main app
+    # Test target is nested within main app target for proper module access
+    # This is the standard CocoaPods practice that ensures test target can import main app module
   end
 
   post_install do |installer|
