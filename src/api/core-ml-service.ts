@@ -1,6 +1,5 @@
-import { Alert } from 'react-native';
 import { nativeLLMService } from './dev-llm-service';
-import type { NativeModelMetadata, GenerationResult } from './native-llm-service';
+import type { NativeModelMetadata } from './native-llm-service';
 
 // Workflow trigger: Updated for continuous integration
 
@@ -132,7 +131,7 @@ class CoreMLService {
     });
 
     // Model loaded
-    nativeLLMService.on('modelLoaded', async (event: any) => {
+    nativeLLMService.on('modelLoaded', async (_event: any) => {
       await this.refreshModels();
     });
   }

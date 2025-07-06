@@ -50,10 +50,10 @@ jobs:
         ls -la
         
     - name: TypeScript check
-      run: bunx tsc --noEmit --skipLibCheck
+      run: bun run type-check
       
     - name: Lint TypeScript
-      run: bunx eslint "src/**/*.{ts,tsx}" --max-warnings 50
+      run: bun run lint
 
   ios-build:
     name: iOS Build and Test

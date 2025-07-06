@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+// import { NativeModules, Platform } from 'react-native'; // Unused for dev service
 import { getOpenAIChatResponse, getAnthropicChatResponse } from './chat-service';
 import type { NativeModelMetadata, GenerationConfig, GenerationResult, DownloadProgressEvent, ModelEvent } from './native-llm-service';
 
@@ -122,7 +122,7 @@ class DevLLMService {
 
   async generateText(
     prompt: string,
-    config: GenerationConfig = {
+    _config: GenerationConfig = {
       maxTokens: 256,
       temperature: 0.7,
       topP: 0.9
