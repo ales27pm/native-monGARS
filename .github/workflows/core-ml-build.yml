@@ -19,7 +19,7 @@ on:
 jobs:
   build-and-test:
     name: Build & Test iOS App
-    runs-on: macos-14 # Using a modern macOS runner for Xcode 15+ compatibility
+    runs-on: macos-14
 
     steps:
       - name: ⬇️ Check out repository
@@ -30,11 +30,16 @@ jobs:
         with:
           node-version: '20'
 
+      - name: ⚙️ Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
       - name: 📦 Install JavaScript dependencies
-        run: npm ci --legacy-peer-deps
+        run: bun install --frozen-lockfile
 
       - name: 🏗️ Prebuild iOS project
-        run: npx expo prebuild --platform ios --clear
+        run: bunx expo prebuild --platform ios --clear
 
       - name: 📱 Install iOS dependencies (CocoaPods)
         run: cd ios && pod install
@@ -43,34 +48,27 @@ jobs:
         run: gem install xcpretty
 
       - name: 💅 Lint TypeScript code
-        run: npm run lint
+        run: bun run lint
 
       - name: ʦ Type-check TypeScript
-        run: npm run type-check
+        run: bun run type-check
 
       - name: 🧪 Run JavaScript tests
-        run: npm test -- --ci --reporters=default --reporters=jest-junit
-        continue-on-error: true # Continue even if tests fail to allow artifact upload
-
-      - name: 📤 Upload JS test report
-        if: always() # Always run this step to upload the report
-        uses: actions/upload-artifact@v4
-        with:
-          name: jest-test-report
-          path: junit.xml
+        run: bun test
+        continue-on-error: true
 
       - name: 🏗️ Build iOS application
         env:
           DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
-          set -o pipefail && xcodebuild -workspace ios/monGARS.xcworkspace -scheme monGARS -configuration Release -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' build | xcpretty
+          set -o pipefail && xcodebuild -workspace ios/monGARS.xcworkspace -scheme monGARS -configuration Release -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.5' build | xcpretty
         
       - name: 🧪 Run iOS native tests
         env:
           DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
-          set -o pipefail && xcodebuild test -workspace ios/monGARS.xcworkspace -scheme monGARS -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' | xcpretty
-        continue-on-error: true # Continue to allow log upload
+          set -o pipefail && xcodebuild test -workspace ios/monGARS.xcworkspace -scheme monGARS -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.5' | xcpretty
+        continue-on-error: true
 
       - name: 📤 Upload iOS logs on failure
         if: failure()

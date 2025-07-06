@@ -40,18 +40,16 @@ export interface ModelEvent {
   processingTime?: number;
 }
 
-// Native module interface
+// Native module interface matching Swift implementation
 interface LocalLLMModuleInterface {
-  downloadModel(modelId: string): Promise<{ success: boolean; modelId: string }>;
-  loadModel(modelId: string): Promise<{ success: boolean; modelId: string }>;
-  deleteModel(modelId: string): Promise<{ success: boolean }>;
+  downloadModel(modelId: string): Promise<boolean>;
+  loadModel(modelId: string): Promise<boolean>;
+  deleteModel(modelId: string): Promise<boolean>;
   getAvailableModels(): Promise<NativeModelMetadata[]>;
   generateText(
     prompt: string,
-    maxTokens: number,
-    temperature: number,
-    topP: number
-  ): Promise<GenerationResult>;
+    options: { [key: string]: any }
+  ): Promise<{ text: string; tokensGenerated: number; inferenceTime: number }>;
 }
 
 // Native module and event emitter
@@ -145,7 +143,7 @@ class NativeLLMService {
     }
 
     const result = await LocalLLMModule.downloadModel(modelId);
-    if (!result.success) {
+    if (!result) {
       throw new Error(`Failed to download model ${modelId}`);
     }
   }
@@ -156,7 +154,7 @@ class NativeLLMService {
     }
 
     const result = await LocalLLMModule.loadModel(modelId);
-    if (!result.success) {
+    if (!result) {
       throw new Error(`Failed to load model ${modelId}`);
     }
   }
@@ -167,7 +165,7 @@ class NativeLLMService {
     }
 
     const result = await LocalLLMModule.deleteModel(modelId);
-    if (!result.success) {
+    if (!result) {
       throw new Error(`Failed to delete model ${modelId}`);
     }
   }
@@ -187,12 +185,13 @@ class NativeLLMService {
     // Format prompt for Llama 3.2 Instruct format
     const formattedPrompt = this.formatPromptForLlama32(prompt);
 
-    return await LocalLLMModule.generateText(
-      formattedPrompt,
-      config.maxTokens,
-      config.temperature,
-      config.topP
-    );
+    const result = await LocalLLMModule.generateText(formattedPrompt, config);
+    
+    return {
+      text: result.text,
+      tokenCount: result.tokensGenerated,
+      processingTime: result.inferenceTime
+    };
   }
 
   private formatPromptForLlama32(prompt: string): string {

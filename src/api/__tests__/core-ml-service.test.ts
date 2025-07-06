@@ -1,8 +1,8 @@
 import { coreMLService } from '../core-ml-service';
-import { nativeLLMService } from '../dev-llm-service';
+import { nativeLLMService } from '../native-llm-service';
 
-// Mock the development service
-jest.mock('../dev-llm-service');
+// Mock the native service
+jest.mock('../native-llm-service');
 
 describe('CoreMLService', () => {
   beforeEach(() => {

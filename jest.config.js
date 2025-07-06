@@ -1,6 +1,6 @@
 module.exports = {
-  preset: 'react-native',
-  testEnvironment: 'node',
+  preset: 'jest-expo',
+  testEnvironment: 'jsdom',
   
   // Test file patterns
   testMatch: [
@@ -16,8 +16,8 @@ module.exports = {
   
   // Module name mapping
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-    '^~/(.*)$': '<rootDir>/$1'
+    '^@/(.*): '<rootDir>/src/$1',
+    '^~/(.*): '<rootDir>/$1'
   },
   
   // Ignore patterns
@@ -30,7 +30,7 @@ module.exports = {
   
   // Transform ignore patterns
   transformIgnorePatterns: [
-    'node_modules/(?!(react-native|@react-native|@expo|expo-.*)/)'
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)'
   ],
   
   // Coverage settings
