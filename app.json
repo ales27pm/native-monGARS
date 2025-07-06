@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "vibecode",
-    "slug": "vibecode",
-    "scheme": "vibecode",
+    "name": "monGARS",
+    "slug": "monGARS",
+    "scheme": "monGARS",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.monGARS"
     },
     "android": {
       "edgeToEdgeEnabled": true
