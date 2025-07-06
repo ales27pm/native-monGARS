@@ -2,6 +2,8 @@ import { Alert } from 'react-native';
 import { nativeLLMService } from './dev-llm-service';
 import type { NativeModelMetadata, GenerationResult } from './native-llm-service';
 
+// Workflow trigger: Updated for continuous integration
+
 export interface CoreMLModel {
   id: string;
   name: string;
