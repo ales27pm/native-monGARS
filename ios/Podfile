@@ -41,18 +41,9 @@ target 'monGARS' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  # Core ML and AI-related pods
-  pod 'CoreML'
-  
-  # Natural Language Processing
-  pod 'NaturalLanguage'
-  
-  # Performance monitoring
-  pod 'os.log'
-  
-  # Compression utilities for model files
-  pod 'Compression'
-  
+  # System frameworks like CoreML and NaturalLanguage are linked automatically by Xcode
+  # and should not be declared as pods.
+
   target 'monGARSTests' do
     inherit! :complete
     # Pods for testing

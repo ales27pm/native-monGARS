@@ -7,15 +7,20 @@
 
 Date: 2025-07-06T18:05:41.235Z
 
-# Workflow CI Fix
+# Workflow CI Fixes
 
 ## Changes Made
-- Corrected iOS Simulator destination in core-ml-build.yml from OS:latest to OS:17.5.
-- Added jest-junit dependency for test reporting.
-- Improved Pod install step with pod repo update.
+- Corrected iOS Simulator destination in `core-ml-build.yml` from `OS:latest` to `OS:17.5`.
+- Added `jest-junit` dependency for test reporting.
+- Improved Pod install step with `pod repo update`.
+- **CRITICAL FIX**: Removed invalid system framework declarations from `Podfile`.
+  - Removed: `pod 'CoreML'`, `pod 'NaturalLanguage'`, `pod 'os.log'`, `pod 'Compression'`
+  - These are iOS SDK frameworks that should be automatically linked by Xcode, not managed by CocoaPods
 
 ## Impact
-- Resolves the primary blocker in the CI pipeline, allowing iOS native tests to run.
+- Resolves the primary blockers in the CI pipeline, allowing iOS native builds and tests to run.
+- Fixes compilation errors: "no such module 'Combine'", "no such module 'CoreML'", "no such module 'monGARS'"
 - Ensures stable and repeatable builds in the GitHub Actions environment.
+- Enables proper linking of system frameworks for Core ML functionality.
 
-Date: 2025-07-06T18:35:12.934Z
+Date: 2025-07-06T18:40:00.000Z
