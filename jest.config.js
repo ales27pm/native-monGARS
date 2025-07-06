@@ -16,8 +16,8 @@ module.exports = {
   
   // Module name mapping
   moduleNameMapper: {
-    '^@/(.*): '<rootDir>/src/$1',
-    '^~/(.*): '<rootDir>/$1'
+    '^@/(.*)': '<rootDir>/src/$1',
+    '^~/(.*)': '<rootDir>/$1'
   },
   
   // Ignore patterns
@@ -32,6 +32,22 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)'
   ],
+  
+  // Transform configuration
+  transform: {
+    '^.+\.(js|jsx|ts|tsx)
+  
+  // Coverage settings
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/__tests__/**'
+  ],
+  
+  // Timeout
+  testTimeout: 10000
+};: 'babel-jest',
+  },
   
   // Coverage settings
   collectCoverageFrom: [
