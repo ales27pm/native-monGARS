@@ -37,8 +37,12 @@ target 'monGARS' do
   end
 
   post_install do |installer|
+    # Get config from shared_pods function - we need to call use_native_modules! again
+    config = use_native_modules!
+    
     react_native_post_install(
       installer,
+      config[:reactNativePath],
       # Set mac_catalyst_enabled to false to avoid build issues
       :mac_catalyst_enabled => false
     )
