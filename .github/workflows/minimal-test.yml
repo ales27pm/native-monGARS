@@ -18,5 +18,5 @@ jobs:
           node --version
           npm --version
           ls -la
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: echo "Dependencies installed successfully"
