@@ -1,0 +1,45 @@
+name: Debug Test
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  debug:
+    name: Debug Repository Structure
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Debug environment
+      run: |
+        echo "🔍 DEBUGGING REPOSITORY STRUCTURE"
+        echo "================================="
+        echo ""
+        echo "📂 Current directory:"
+        pwd
+        echo ""
+        echo "📋 List all files in root:"
+        ls -la
+        echo ""
+        echo "📂 Check if ios directory exists:"
+        ls -la ios/ || echo "❌ ios directory not found"
+        echo ""
+        echo "📂 Check if ios/LocalLLMModule exists:"
+        ls -la ios/LocalLLMModule/ || echo "❌ ios/LocalLLMModule directory not found"
+        echo ""
+        echo "📂 Check specific files:"
+        echo "- App.tsx: $(test -f App.tsx && echo 'EXISTS' || echo 'MISSING')"
+        echo "- ios/LocalLLMModule/LocalLLMModule.swift: $(test -f ios/LocalLLMModule/LocalLLMModule.swift && echo 'EXISTS' || echo 'MISSING')"
+        echo "- ios/LocalLLMModule/LocalLLMModule.m: $(test -f ios/LocalLLMModule/LocalLLMModule.m && echo 'EXISTS' || echo 'MISSING')"
+        echo "- src/api/native-llm-service.ts: $(test -f src/api/native-llm-service.ts && echo 'EXISTS' || echo 'MISSING')"
+        echo ""
+        echo "📊 Repository info:"
+        echo "- Git branch: $(git branch --show-current)"
+        echo "- Git commit: $(git rev-parse HEAD | head -c 8)"
+        echo "- Working directory: $(pwd)"
+        echo ""
+        echo "🔍 Full repository tree (first 50 lines):"
+        find . -type f -name "*.ts" -o -name "*.tsx" -o -name "*.swift" -o -name "*.m" | head -50
