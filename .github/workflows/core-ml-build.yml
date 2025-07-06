@@ -41,6 +41,9 @@ jobs:
       - name: 📱 Install iOS dependencies (CocoaPods)
         run: cd ios && pod install
 
+      - name: 🔧 Install xcpretty
+        run: gem install xcpretty
+
       - name: 💅 Lint TypeScript code
         run: npm run lint
 
@@ -60,15 +63,15 @@ jobs:
 
       - name: 🏗️ Build iOS application
         env:
-          DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
-          set -o pipefail && xcodebuild -workspace ios/monGARS.xcworkspace -scheme monGARS -configuration Release -destination 'generic/platform=iOS' build | xcpretty
+          set -o pipefail && xcodebuild -workspace ios/monGARS.xcworkspace -scheme monGARS -configuration Release -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' build | xcpretty
         
       - name: 🧪 Run iOS native tests
         env:
-          DEVELOPER_DIR: /Applications/Xcode_15.4.app/Contents/Developer
+          DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
         run: |
-          set -o pipefail && xcodebuild test -workspace ios/monGARS.xcworkspace -scheme monGARS -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=17.5' | xcpretty
+          set -o pipefail && xcodebuild test -workspace ios/monGARS.xcworkspace -scheme monGARS -destination 'platform=iOS Simulator,name=iPhone 15 Pro,OS=latest' | xcpretty
         continue-on-error: true # Continue to allow log upload
 
       - name: 📤 Upload iOS logs on failure
