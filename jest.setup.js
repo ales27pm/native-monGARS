@@ -35,8 +35,8 @@ jest.mock('expo-file-system', () => ({
   makeDirectoryAsync: jest.fn(),
 }));
 
-// Mock the native LLM module
-jest.mock('./src/api/native-llm-service', () => ({
+// Mock the development LLM service
+jest.mock('./src/api/dev-llm-service', () => ({
   nativeLLMService: {
     getAvailableModels: jest.fn(() => Promise.resolve([
       {

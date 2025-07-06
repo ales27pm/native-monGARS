@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
-import { nativeLLMService, NativeModelMetadata, GenerationResult } from './native-llm-service';
+import { nativeLLMService } from './dev-llm-service';
+import type { NativeModelMetadata, GenerationResult } from './native-llm-service';
 
 export interface CoreMLModel {
   id: string;
@@ -42,20 +43,15 @@ class CoreMLService {
   private async initializeService() {
     if (this.isInitialized) return;
     
-    try {
-      // Get native models and merge with static model data
-      const nativeModels = await nativeLLMService.getAvailableModels();
-      this.initializeModelsFromNative(nativeModels);
-      
-      // Setup native event listeners
-      this.setupNativeEventListeners();
-      
-      this.isInitialized = true;
-    } catch (error) {
-      console.warn('Failed to initialize native LLM service, falling back to mock data:', error);
-      this.initializeMockModels();
-      this.isInitialized = true; // Mark as initialized even with fallback
-    }
+    // Get native models and merge with static model data
+    const nativeModels = await nativeLLMService.getAvailableModels();
+    this.initializeModelsFromNative(nativeModels);
+    
+    // Setup native event listeners
+    this.setupNativeEventListeners();
+    
+    this.isInitialized = true;
+    console.log('✅ CoreMLService: Initialized successfully');
   }
 
   private initializeModelsFromNative(nativeModels: NativeModelMetadata[]) {
@@ -92,29 +88,7 @@ class CoreMLService {
     });
   }
 
-  private initializeMockModels() {
-    // Fallback mock models for development/testing
-    const mockModels: CoreMLModel[] = [
-      {
-        id: 'llama-3.2-3b-instruct',
-        name: 'Llama 3.2 3B Instruct',
-        description: 'Meta\'s latest Llama 3.2 model optimized for mobile devices with excellent instruction following',
-        size: '1.8 GB',
-        downloadUrl: 'https://huggingface.co/andmev/Llama-3.2-3B-Instruct-CoreML',
-        isDownloaded: false,
-        isActive: false,
-        capabilities: ['chat', 'reasoning', 'instruction-following', 'code', 'summarization'],
-        version: '1.0.0',
-        contextLength: 8192,
-        isQuantized: true,
-        precisionBits: 4
-      }
-    ];
 
-    mockModels.forEach(model => {
-      this.models.set(model.id, model);
-    });
-  }
 
   private calculateModelSize(nativeModel: NativeModelMetadata): string {
     // Estimate size based on model parameters and quantization
@@ -193,51 +167,11 @@ class CoreMLService {
       throw new Error(`Model ${modelId} is already downloaded`);
     }
 
-    try {
-      // Use native download
-      await nativeLLMService.downloadModel(modelId);
-    } catch (error) {
-      // Fallback to mock download for development
-      console.warn('Native download failed, using mock:', error);
-      await this.mockDownloadModel(modelId);
-    }
+    // Download using the appropriate service (native or development)
+    await nativeLLMService.downloadModel(modelId);
   }
 
-  private async mockDownloadModel(modelId: string): Promise<void> {
-    const model = this.models.get(modelId);
-    if (!model) return;
 
-    // Simulate download progress
-    return new Promise((resolve, reject) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 15 + 5; // 5-20% increments
-        
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          
-          // Update model status
-          model.isDownloaded = true;
-          this.models.set(modelId, model);
-          
-          this.notifyDownloadProgress({
-            modelId,
-            progress: 100,
-            status: 'completed'
-          });
-          
-          resolve();
-        } else {
-          this.notifyDownloadProgress({
-            modelId,
-            progress: Math.min(progress, 95),
-            status: progress < 80 ? 'downloading' : 'installing'
-          });
-        }
-      }, 800);
-    });
-  }
 
   async activateModel(modelId: string): Promise<void> {
     await this.ensureInitialized();
@@ -251,28 +185,16 @@ class CoreMLService {
       throw new Error(`Model ${modelId} must be downloaded first`);
     }
 
-    try {
-      // Use native load
-      await nativeLLMService.loadModel(modelId);
-      
-      // Update local state
-      this.models.forEach(m => {
-        m.isActive = false;
-      });
-      
-      model.isActive = true;
-      this.models.set(modelId, model);
-    } catch (error) {
-      // Fallback to mock activation
-      console.warn('Native load failed, using mock:', error);
-      
-      this.models.forEach(m => {
-        m.isActive = false;
-      });
-      
-      model.isActive = true;
-      this.models.set(modelId, model);
-    }
+    // Use the appropriate service (native or development)
+    await nativeLLMService.loadModel(modelId);
+    
+    // Update local state
+    this.models.forEach(m => {
+      m.isActive = false;
+    });
+    
+    model.isActive = true;
+    this.models.set(modelId, model);
   }
 
   async deleteModel(modelId: string): Promise<void> {
@@ -287,22 +209,13 @@ class CoreMLService {
       throw new Error(`Cannot delete active model ${modelId}`);
     }
 
-    try {
-      // Use native delete
-      await nativeLLMService.deleteModel(modelId);
-      
-      // Update local state
-      model.isDownloaded = false;
-      model.isActive = false;
-      this.models.set(modelId, model);
-    } catch (error) {
-      // Fallback to mock deletion
-      console.warn('Native delete failed, using mock:', error);
-      
-      model.isDownloaded = false;
-      model.isActive = false;
-      this.models.set(modelId, model);
-    }
+    // Use the appropriate service (native or development)
+    await nativeLLMService.deleteModel(modelId);
+    
+    // Update local state
+    model.isDownloaded = false;
+    model.isActive = false;
+    this.models.set(modelId, model);
   }
 
   async generateResponse(prompt: string): Promise<string> {
@@ -313,31 +226,14 @@ class CoreMLService {
       throw new Error('No active model available');
     }
 
-    try {
-      // Use native generation
-      const result = await nativeLLMService.generateText(prompt, {
-        maxTokens: 256,
-        temperature: 0.7,
-        topP: 0.9
-      });
-      
-      return result.text;
-    } catch (error) {
-      // Fallback to mock response
-      console.warn('Native generation failed, using mock:', error);
-      
-      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-      const responses = [
-        "I understand your request. As an AI assistant running locally on your device, I can help you with various tasks while keeping your data completely private.",
-        "That's an interesting question! Since I'm running entirely on your device using Core ML, I can provide responses without any data leaving your phone.",
-        "I'm processing your request using the local language model. This ensures maximum privacy and fast responses without internet dependency.",
-        "Based on my understanding, I can assist you with that. All processing happens locally on your device for complete privacy protection.",
-        "Let me help you with that. I'm running the " + activeModel.name + " model locally, so your conversations remain completely private."
-      ];
-
-      return responses[Math.floor(Math.random() * responses.length)];
-    }
+    // Use the appropriate service (native or development)
+    const result = await nativeLLMService.generateText(prompt, {
+      maxTokens: 256,
+      temperature: 0.7,
+      topP: 0.9
+    });
+    
+    return result.text;
   }
 
   onDownloadProgress(listener: (progress: DownloadProgress) => void): () => void {
