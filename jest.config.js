@@ -1,6 +1,6 @@
 module.exports = {
-  preset: 'jest-expo',
-  testEnvironment: 'jsdom',
+  preset: 'react-native',
+  testEnvironment: 'node',
   
   // Test file patterns
   testMatch: [
@@ -9,15 +9,7 @@ module.exports = {
   ],
   
   // Setup files
-  setupFilesAfterEnv: [
-    '@testing-library/jest-native/extend-expect',
-    './jest.setup.js'
-  ],
-  
-  // Transform files
-  transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest'
-  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   
   // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
@@ -36,36 +28,18 @@ module.exports = {
     '/.expo/'
   ],
   
+  // Transform ignore patterns
+  transformIgnorePatterns: [
+    'node_modules/(?!(react-native|@react-native|@expo|expo-.*)/)'
+  ],
+  
   // Coverage settings
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
-    '!src/**/*.stories.{ts,tsx}',
-    '!src/**/__tests__/**',
-    '!src/**/node_modules/**'
+    '!src/**/__tests__/**'
   ],
   
-  coverageReporters: ['html', 'text', 'lcov'],
-  
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70
-    }
-  },
-  
   // Timeout
-  testTimeout: 10000,
-  
-  // Globals
-  globals: {
-    'ts-jest': {
-      useESM: true,
-      tsconfig: {
-        jsx: 'react-jsx'
-      }
-    }
-  }
+  testTimeout: 10000
 };

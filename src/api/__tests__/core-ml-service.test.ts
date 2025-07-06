@@ -65,7 +65,7 @@ describe('CoreMLService', () => {
       ];
 
       (nativeLLMService.getAvailableModels as jest.Mock).mockResolvedValue(mockModels);
-      (nativeLLMService.downloadModel as jest.Mock).mockResolvedValue();
+      (nativeLLMService.downloadModel as jest.Mock).mockResolvedValue(undefined);
 
       await expect(coreMLService.downloadModel('llama-3.2-3b-instruct')).resolves.not.toThrow();
       expect(nativeLLMService.downloadModel).toHaveBeenCalledWith('llama-3.2-3b-instruct');
@@ -119,7 +119,7 @@ describe('CoreMLService', () => {
       ];
 
       (nativeLLMService.getAvailableModels as jest.Mock).mockResolvedValue(mockModels);
-      (nativeLLMService.loadModel as jest.Mock).mockResolvedValue();
+      (nativeLLMService.loadModel as jest.Mock).mockResolvedValue(undefined);
 
       await expect(coreMLService.activateModel('llama-3.2-3b-instruct')).resolves.not.toThrow();
       expect(nativeLLMService.loadModel).toHaveBeenCalledWith('llama-3.2-3b-instruct');
@@ -272,7 +272,7 @@ describe('CoreMLService', () => {
       ];
 
       (nativeLLMService.getAvailableModels as jest.Mock).mockResolvedValue(mockModels);
-      (nativeLLMService.deleteModel as jest.Mock).mockResolvedValue();
+      (nativeLLMService.deleteModel as jest.Mock).mockResolvedValue(undefined);
 
       await expect(coreMLService.deleteModel('llama-3.2-3b-instruct')).resolves.not.toThrow();
       expect(nativeLLMService.deleteModel).toHaveBeenCalledWith('llama-3.2-3b-instruct');

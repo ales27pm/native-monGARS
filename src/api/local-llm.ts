@@ -123,17 +123,17 @@ class LocalLLMService {
     return JSON.stringify(exportData, null, 2);
   }
 
-  getStats(): {
+  async getStats(): Promise<{
     totalSessions: number;
     totalMessages: number;
     activeModel: string;
     storageUsed: string;
-  } {
+  }> {
     const totalMessages = Array.from(this.sessions.values())
       .reduce((total, session) => total + session.messages.length, 0);
     
-    const activeModel = coreMLService.getActiveModel();
-    const storageInfo = coreMLService.getStorageInfo();
+    const activeModel = await coreMLService.getActiveModel();
+    const storageInfo = await coreMLService.getStorageInfo();
 
     return {
       totalSessions: this.sessions.size,
