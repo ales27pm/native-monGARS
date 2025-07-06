@@ -5,18 +5,8 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+platform :ios, '15.0' # Set a specific iOS version for Core ML compatibility
 prepare_react_native_project!
-
-# If you are using a `react-native-flipper` your iOS build will fail when `NO_FLIPPER=1` is set.
-# because `react-native-flipper` depends on (FlipperKit,...) that will be excluded
-#
-# To fix this you can also exclude `react-native-flipper` by adding a `# flipper_disable` flag
-# Example: `pod 'react-native-flipper', :flipper_disable => true`
-#
-# If you want to use flipper, you should disable fabric (iOS). React Native > 0.72 default is newarch
-# The following line will force the old architecture. Disable this line if you want to use fabric.
-# ENV['RCT_NEW_ARCH_ENABLED'] = '0'
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -24,67 +14,52 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'monGARS' do
+# Define shared pods for both main app and test targets
+def shared_pods
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # Hermes is now enabled by default. Disable by setting this flag to false.
     :hermes_enabled => flags[:hermes_enabled],
     :fabric_enabled => flags[:fabric_enabled],
-    # Enables Flipper.
-    #
-    # Note that if you have use_frameworks! enabled, Flipper will not work and
-    # you should disable the next line.
     :flipper_configuration => flipper_config,
-    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
+end
 
-  # System frameworks like CoreML and NaturalLanguage are linked automatically by Xcode
-  # and should not be declared as pods.
+target 'monGARS' do
+  shared_pods
 
   target 'monGARSTests' do
-    inherit! :complete
-    # Explicitly link the main application target to the test target
-    pod 'monGARS', :path => '.'
+    inherit! :search_paths
+    shared_pods
+    # Pods for testing can be added here
   end
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
-      config[:reactNativePath],
+      # Set mac_catalyst_enabled to false to avoid build issues
       :mac_catalyst_enabled => false
     )
     
-    # Fix for Core ML compilation
+    # Fix for Core ML compilation and Xcode 15+
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        # Set minimum iOS version to support Core ML
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
-        
-        # Enable Core ML optimizations
         config.build_settings['ENABLE_COREML_FRAMEWORK'] = 'YES'
-        
-        # Set compiler flags for Core ML
         config.build_settings['OTHER_CFLAGS'] = '$(inherited) -DCORE_ML_ENABLED'
-        
-        # Enable bitcode for Core ML models
         config.build_settings['ENABLE_BITCODE'] = 'YES'
         
-        # Set optimization level for release builds
         if config.name == 'Release'
           config.build_settings['GCC_OPTIMIZATION_LEVEL'] = '3'
           config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
         end
         
-        # Fix for Xcode 15 compatibility
         config.build_settings['DEVELOPMENT_TEAM'] = ''
         config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
         config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
         
-        # Enable new architecture if needed
         if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
           config.build_settings['OTHER_CPLUSPLUSFLAGS'] = '$(inherited) -DRCT_NEW_ARCH_ENABLED'
           config.build_settings['OTHER_CFLAGS'] = '$(inherited) -DRCT_NEW_ARCH_ENABLED'
