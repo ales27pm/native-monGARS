@@ -24,3 +24,14 @@ Date: 2025-07-06T18:05:41.235Z
 - Enables proper linking of system frameworks for Core ML functionality.
 
 Date: 2025-07-06T18:40:00.000Z
+
+# iOS Test Target Linker Fix
+
+## Changes Made
+- Added `pod 'monGARS', :path => '.'` to the `monGARSTests` target in the `Podfile`.
+
+## Impact
+- This resolves the `no such module 'monGARS'` error during the native test phase of the CI pipeline.
+- Ensures the test suite can correctly import and test the main application's native modules.
+
+Date: 2025-07-06T18:50:00.000Z

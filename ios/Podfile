@@ -46,7 +46,8 @@ target 'monGARS' do
 
   target 'monGARSTests' do
     inherit! :complete
-    # Pods for testing
+    # Explicitly link the main application target to the test target
+    pod 'monGARS', :path => '.'
   end
 
   post_install do |installer|
