@@ -1,0 +1,22 @@
+name: Minimal Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          echo "Basic system check"
+          node --version
+          npm --version
+          ls -la
+      - run: npm ci
+      - run: echo "Dependencies installed successfully"
