@@ -1,4 +1,4 @@
-import { nativeLLMService } from './dev-llm-service';
+import { nativeLLMService } from './native-llm-service';
 import type { NativeModelMetadata } from './native-llm-service';
 
 // Workflow trigger: Updated for continuous integration
