@@ -46,5 +46,6 @@ ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 !ios/monGARSTests/
 !ios/Podfile
 
-# Special environment directory
+# Special environment directories
 specialenv/
+.specialenv/
