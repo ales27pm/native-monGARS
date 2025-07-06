@@ -583,12 +583,18 @@ function SettingsScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate
   const [storageInfo, setStorageInfo] = useState<string>("Loading...");
 
   useEffect(() => {
-    const updateModelInfo = () => {
-      const model = coreMLService.getActiveModel();
-      setActiveModel(model ? model.name : "No model active");
-      
-      const storage = coreMLService.getStorageInfo();
-      setStorageInfo(`${storage.totalUsed} Used`);
+    const updateModelInfo = async () => {
+      try {
+        const model = await coreMLService.getActiveModel();
+        setActiveModel(model ? model.name : "No model active");
+        
+        const storage = await coreMLService.getStorageInfo();
+        setStorageInfo(`${storage.totalUsed} Used`);
+      } catch (error) {
+        console.warn('Failed to update model info:', error);
+        setActiveModel("Error loading");
+        setStorageInfo("Error loading");
+      }
     };
 
     updateModelInfo();

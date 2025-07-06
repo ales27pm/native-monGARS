@@ -16,8 +16,12 @@ export default function ModelManagerScreen({ onBack }: ModelManagerScreenProps) 
   const [storageInfo, setStorageInfo] = useState({ totalUsed: '0 GB', available: '64 GB' });
 
   useEffect(() => {
-    loadModels();
-    updateStorageInfo();
+    const initializeScreen = async () => {
+      await loadModels();
+      await updateStorageInfo();
+    };
+
+    initializeScreen();
 
     const unsubscribe = coreMLService.onDownloadProgress((progress) => {
       setDownloadProgress(prev => {
@@ -42,12 +46,22 @@ export default function ModelManagerScreen({ onBack }: ModelManagerScreenProps) 
     return unsubscribe;
   }, []);
 
-  const loadModels = () => {
-    setModels(coreMLService.getAvailableModels());
+  const loadModels = async () => {
+    try {
+      const availableModels = await coreMLService.getAvailableModels();
+      setModels(availableModels);
+    } catch (error) {
+      console.warn('Failed to load models:', error);
+    }
   };
 
-  const updateStorageInfo = () => {
-    setStorageInfo(coreMLService.getStorageInfo());
+  const updateStorageInfo = async () => {
+    try {
+      const info = await coreMLService.getStorageInfo();
+      setStorageInfo(info);
+    } catch (error) {
+      console.warn('Failed to update storage info:', error);
+    }
   };
 
   const handleDownloadModel = async (model: CoreMLModel) => {
