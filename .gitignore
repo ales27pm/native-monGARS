@@ -49,3 +49,5 @@ ios/*.xcodeproj/project.xcworkspace/xcuserdata/
 # Special environment directories
 specialenv/
 .specialenv/
+# Secure GitHub credentials directory
+.specialenv/
