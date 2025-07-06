@@ -80,6 +80,20 @@ Date: 2025-07-06T19:05:00.000Z
 
 Date: 2025-07-06T19:00:00.000Z
 
+# iOS Test Target Linker Fix 4 (Final Solution)
+
+## Changes Made
+- Changed test target inheritance in Podfile from `inherit! :search_paths` to `inherit! :complete`.
+- Pinned react-native-reanimated version to exact "3.17.4" for CI stability.
+
+## Impact
+- This provides stronger inheritance of build settings, including framework search paths, from the main target to the test target.
+- Resolves linker errors: "ld: framework 'CoreML' not found", "ld: framework 'FBLazyVector' not found", "ld: framework 'RCTTypeSafety' not found"
+- Ensures test target has access to all React Native frameworks and Core ML system frameworks.
+- This is the final step to resolve the native linker errors.
+
+Date: 2025-07-06T19:10:00.000Z
+
 # iOS Test Target Final Linker Fix
 
 ## Changes Made

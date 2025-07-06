@@ -44,9 +44,10 @@ target 'monGARS' do
 
   # CRITICAL: Properly nested test target for reliable linking
   target 'monGARSTests' do
-    inherit! :search_paths
-    # Test target is nested within main app target for proper module access
-    # This is the standard CocoaPods practice that ensures test target can import main app module
+    inherit! :complete
+    # Test target inherits ALL build settings from main app target
+    # This ensures framework search paths and all React Native/Core ML settings are properly inherited
+    # Required to resolve linker errors: 'ld: framework CoreML not found', 'ld: framework FBLazyVector not found'
   end
 
   post_install do |installer|
