@@ -31,29 +31,25 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
-      with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Debug environment
       run: |
         echo "Node version: $(node --version)"
-        echo "Bun version: $(bun --version)"
-        echo "TypeScript version: $(bunx tsc --version)"
+        echo "NPM version: $(npm --version)"
+        echo "TypeScript version: $(npx tsc --version)"
         echo "Working directory: $(pwd)"
         echo "Files present:"
         ls -la
         
     - name: TypeScript check
-      run: bun run type-check
+      run: npm run type-check
       
     - name: Lint TypeScript
-      run: bun run lint
+      run: npm run lint
 
   ios-build:
     name: iOS Build and Test

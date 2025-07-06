@@ -19,14 +19,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
-      with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Check file structure
       run: |
@@ -77,7 +73,7 @@ jobs:
       run: |
         echo "📦 Checking package.json configuration..."
         
-        if bun run --help | grep -q "Available scripts"; then
+        if npm run --help | grep -q "Available scripts"; then
           echo "✅ Bun scripts available"
         fi
         
@@ -96,7 +92,7 @@ jobs:
         echo "🔧 Running basic TypeScript validation..."
         
         # Just check if TypeScript can parse the files, don't check types strictly
-        bunx tsc --noEmit --skipLibCheck --allowJs --checkJs false || {
+        npx tsc --noEmit --skipLibCheck --allowJs --checkJs false || {
           echo "⚠️  TypeScript validation had issues, but continuing..."
           echo "This is expected for complex React Native + Expo + Core ML setup"
         }

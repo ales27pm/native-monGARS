@@ -198,13 +198,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
@@ -224,11 +224,11 @@ jobs:
         
         # TypeScript compilation
         echo "📝 TypeScript compilation..."
-        bunx tsc --noEmit --skipLibCheck
+        npx tsc --noEmit --skipLibCheck
         
         # Linting
         echo "🔍 Code linting..."
-        bunx eslint "src/**/*.{ts,tsx}" --max-warnings 50
+        npx eslint "src/**/*.{ts,tsx}" --max-warnings 50
         
         # Unit tests
         echo "🧪 Unit tests..."
@@ -264,13 +264,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1

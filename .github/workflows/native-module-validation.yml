@@ -46,13 +46,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Validate TurboModule implementation
       run: |
@@ -150,13 +150,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: TypeScript bridge validation
       run: |
@@ -234,7 +234,7 @@ jobs:
     - name: Type checking
       run: |
         echo "🔍 Running TypeScript type checking..."
-        bunx tsc --noEmit --skipLibCheck
+        npx tsc --noEmit --skipLibCheck
         echo "✅ TypeScript compilation successful"
 
   integration-testing:
@@ -251,13 +251,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Setup Ruby
       uses: ruby/setup-ruby@v1
@@ -342,13 +342,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: API compatibility validation
       run: |
@@ -474,13 +474,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Native module performance tests
       run: |

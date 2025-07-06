@@ -40,13 +40,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Check for outdated packages
       run: |
@@ -186,13 +186,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Run security audit
       run: |
@@ -272,13 +272,13 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
+    - name: Setup Node.js (npm cached)
+      uses: actions/setup-node@v4
       with:
-        bun-version: latest
+        cache: 'npm'
         
     - name: Install dependencies
-      run: bun install
+      run: npm ci --legacy-peer-deps
       
     - name: Performance benchmark
       run: |
@@ -311,7 +311,7 @@ jobs:
         echo -e "\n📝 TypeScript Compilation Performance:"
         
         start_time=$(date +%s.%N)
-        bunx tsc --noEmit --skipLibCheck
+        npx tsc --noEmit --skipLibCheck
         end_time=$(date +%s.%N)
         
         compile_time=$(echo "$end_time - $start_time" | bc)
