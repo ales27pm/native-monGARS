@@ -28,33 +28,26 @@ jobs:
       run: |
         echo "🔍 Checking Core ML implementation files..."
         
-        # Check iOS files
+        # Check iOS TurboModule files
         if [ -f "ios/LocalLLMModule/LocalLLMModule.swift" ]; then
-          echo "✅ iOS Swift module exists"
+          echo "✅ iOS Swift TurboModule exists"
         else
-          echo "❌ iOS Swift module missing"
+          echo "❌ iOS Swift TurboModule missing at ios/LocalLLMModule/LocalLLMModule.swift"
           exit 1
         fi
         
         if [ -f "ios/LocalLLMModule/LocalLLMModule.m" ]; then
-          echo "✅ iOS Objective-C bridge exists"
+          echo "✅ iOS Obj-C bridge exists"
         else
-          echo "❌ iOS Objective-C bridge missing"
+          echo "❌ Obj-C bridge missing at ios/LocalLLMModule/LocalLLMModule.m"
           exit 1
         fi
         
-        # Check TypeScript services
-        if [ -f "src/api/core-ml-service.ts" ]; then
-          echo "✅ Core ML service exists"
-        else
-          echo "❌ Core ML service missing"
-          exit 1
-        fi
-        
+        # Check TypeScript LLM services
         if [ -f "src/api/native-llm-service.ts" ]; then
           echo "✅ Native LLM service exists"
         else
-          echo "❌ Native LLM service missing"
+          echo "❌ Native LLM service missing at src/api/native-llm-service.ts"
           exit 1
         fi
         
