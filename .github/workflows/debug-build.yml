@@ -1,0 +1,57 @@
+name: Debug Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  debug:
+    name: Debug Build Environment
+    runs-on: macos-14
+
+    steps:
+      - name: ⬇️ Check out repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔍 Debug environment
+        run: |
+          echo "=== System Info ==="
+          system_profiler SPSoftwareDataType
+          echo "=== Xcode Info ==="
+          xcodebuild -version
+          echo "=== Available Simulators ==="
+          xcrun simctl list devices available
+          echo "=== Node/NPM Info ==="
+          node --version
+          npm --version
+          echo "=== Project Structure ==="
+          ls -la
+          echo "=== iOS Directory ==="
+          ls -la ios/
+          echo "=== Package.json Scripts ==="
+          cat package.json | grep -A 20 '"scripts"'
+
+      - name: 🏗️ Prebuild iOS project
+        run: |
+          echo "=== Running Expo Prebuild ==="
+          npx expo prebuild --platform ios --clear
+          echo "=== iOS Structure After Prebuild ==="
+          ls -la ios/
+          find ios/ -name "*.xcworkspace" -o -name "*.xcodeproj"
+
+      - name: 💅 Basic TypeScript check
+        run: npm run type-check
+        continue-on-error: true
+
+      - name: 🧪 Basic tests
+        run: npm test --passWithNoTests
+        continue-on-error: true
