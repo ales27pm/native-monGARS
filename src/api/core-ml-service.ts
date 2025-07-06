@@ -29,7 +29,14 @@ class CoreMLService {
   private isInitialized = false;
 
   constructor() {
-    this.initializeService();
+    // Don't initialize immediately to prevent runtime errors
+    // Initialize on first use instead
+  }
+
+  private async ensureInitialized() {
+    if (!this.isInitialized) {
+      await this.initializeService();
+    }
   }
 
   private async initializeService() {
@@ -47,6 +54,7 @@ class CoreMLService {
     } catch (error) {
       console.warn('Failed to initialize native LLM service, falling back to mock data:', error);
       this.initializeMockModels();
+      this.isInitialized = true; // Mark as initialized even with fallback
     }
   }
 
@@ -163,18 +171,18 @@ class CoreMLService {
   }
 
   async getAvailableModels(): Promise<CoreMLModel[]> {
-    await this.initializeService();
+    await this.ensureInitialized();
     return Array.from(this.models.values());
   }
 
   async getActiveModel(): Promise<CoreMLModel | null> {
-    await this.initializeService();
+    await this.ensureInitialized();
     const activeModel = Array.from(this.models.values()).find(model => model.isActive);
     return activeModel || null;
   }
 
   async downloadModel(modelId: string): Promise<void> {
-    await this.initializeService();
+    await this.ensureInitialized();
     
     const model = this.models.get(modelId);
     if (!model) {
@@ -232,7 +240,7 @@ class CoreMLService {
   }
 
   async activateModel(modelId: string): Promise<void> {
-    await this.initializeService();
+    await this.ensureInitialized();
     
     const model = this.models.get(modelId);
     if (!model) {
@@ -268,7 +276,7 @@ class CoreMLService {
   }
 
   async deleteModel(modelId: string): Promise<void> {
-    await this.initializeService();
+    await this.ensureInitialized();
     
     const model = this.models.get(modelId);
     if (!model) {
@@ -298,7 +306,7 @@ class CoreMLService {
   }
 
   async generateResponse(prompt: string): Promise<string> {
-    await this.initializeService();
+    await this.ensureInitialized();
     
     const activeModel = await this.getActiveModel();
     if (!activeModel) {
@@ -344,7 +352,7 @@ class CoreMLService {
   }
 
   async getStorageInfo(): Promise<{ totalUsed: string; available: string }> {
-    await this.initializeService();
+    await this.ensureInitialized();
     
     const downloadedModels = Array.from(this.models.values()).filter(m => m.isDownloaded);
     const totalSizeGB = downloadedModels.reduce((total, model) => {

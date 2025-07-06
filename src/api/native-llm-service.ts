@@ -56,7 +56,7 @@ interface LocalLLMModuleInterface {
 
 // Native module and event emitter
 const LocalLLMModule = NativeModules.LocalLLMModule as LocalLLMModuleInterface;
-const LocalLLMEventEmitter = Platform.OS === 'ios' 
+const LocalLLMEventEmitter = Platform.OS === 'ios' && NativeModules.LocalLLMModule
   ? new NativeEventEmitter(NativeModules.LocalLLMModule)
   : null;
 
@@ -67,7 +67,9 @@ class NativeLLMService {
 
   constructor() {
     this.eventEmitter = LocalLLMEventEmitter;
-    this.setupEventListeners();
+    if (this.eventEmitter) {
+      this.setupEventListeners();
+    }
   }
 
   private setupEventListeners() {
