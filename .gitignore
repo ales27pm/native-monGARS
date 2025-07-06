@@ -33,6 +33,15 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# iOS & Android
-ios/
+# iOS & Android (but keep our Core ML implementation)
 android/
+ios/build/
+ios/DerivedData/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+ios/*.xcodeproj/xcuserdata/
+ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+# Keep iOS source files for Core ML implementation
+!ios/LocalLLMModule/
+!ios/monGARSTests/
+!ios/Podfile
