@@ -1,61 +1,31 @@
 module.exports = {
-  preset: 'jest-expo',
-  testEnvironment: 'jsdom',
-  
-  // Test file patterns
+  testEnvironment: 'node',
   testMatch: [
     '**/__tests__/**/*.(ts|tsx|js)',
     '**/*.(test|spec).(ts|tsx|js)'
   ],
-  
-  // Setup files
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  
-  // Module file extensions
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  
-  // Module name mapping
   moduleNameMapper: {
     '^@/(.*)': '<rootDir>/src/$1',
     '^~/(.*)': '<rootDir>/$1'
   },
-  
-  // Ignore patterns
   testPathIgnorePatterns: [
     '/node_modules/',
     '/ios/',
     '/android/',
     '/.expo/'
   ],
-  
-  // Transform ignore patterns
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)'
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)/|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)'
   ],
-  
-  // Transform configuration
   transform: {
-    '^.+\.(js|jsx|ts|tsx)
-  
-  // Coverage settings
-  collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/**/__tests__/**'
-  ],
-  
-  // Timeout
-  testTimeout: 10000
-};: 'babel-jest',
+    '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest'
   },
-  
-  // Coverage settings
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/__tests__/**'
   ],
-  
-  // Timeout
   testTimeout: 10000
 };
