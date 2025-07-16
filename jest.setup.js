@@ -87,6 +87,8 @@ jest.mock('react-native', () => {
         generateText: jest.fn(),
       }
     },
+    UIManager: {},
+    NativeUnimoduleProxy: { viewManagersMetadata: {} },
     NativeEventEmitter: jest.fn(() => ({
       addListener: jest.fn(),
       removeListener: jest.fn(),
