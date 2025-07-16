@@ -1,0 +1,41 @@
+diff --git a/node_modules/jest-expo/src/preset/setup.js b/node_modules/jest-expo/src/preset/setup.js
+index db69c0f..12881e2 100644
+--- a/node_modules/jest-expo/src/preset/setup.js
++++ b/node_modules/jest-expo/src/preset/setup.js
+@@ -117,16 +117,26 @@ for (const moduleName of Object.keys(expoModules)) {
+   });
+ }
+ 
+-Object.keys(mockNativeModules.NativeUnimoduleProxy.viewManagersMetadata).forEach(
+-  (viewManagerName) => {
+-    Object.defineProperty(mockNativeModules.UIManager, `ViewManagerAdapter_${viewManagerName}`, {
+-      get: () => ({
+-        NativeProps: {},
+-        directEventTypes: [],
+-      }),
+-    });
+-  }
+-);
++if (
++  mockNativeModules.UIManager &&
++  mockNativeModules.NativeUnimoduleProxy &&
++  mockNativeModules.NativeUnimoduleProxy.viewManagersMetadata
++) {
++  Object.keys(mockNativeModules.NativeUnimoduleProxy.viewManagersMetadata).forEach(
++    (viewManagerName) => {
++      Object.defineProperty(
++        mockNativeModules.UIManager,
++        `ViewManagerAdapter_${viewManagerName}`,
++        {
++          get: () => ({
++            NativeProps: {},
++            directEventTypes: [],
++          }),
++        }
++      );
++    }
++  );
++}
+ 
+ try {
+   jest.mock('expo-file-system', () => ({
